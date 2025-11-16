@@ -1,82 +1,76 @@
+import pandas as pd
+import glob
 import os
-import subprocess
+import time
 
-def convert_videos_ffmpeg(input_folder, output_folder, target_height=720):
+# 1. 팀원들의 CSV 파일이 모여있는 폴더 경로
+# (예: 이 스크립트와 같은 위치에 'all_csvs'라는 폴더를 만드세요)
+CSV_SOURCE_DIR = "./data" 
+
+# 2. 통합된 마스터 CSV 파일을 저장할 경로와 이름
+OUTPUT_MASTER_CSV = "./master_summary_v1_standard.csv"
+
+def merge_csv_files(source_dir, output_file):
     """
-    FFmpeg를 직접 호출하여 비디오를 저해상도로 변환합니다. (고속)
-
-    :param input_folder: 원본 비디오가 있는 폴더
-    :param output_folder: 변환된 비디오를 저장할 폴더
-    :param target_height: 목표 해상도 (세로 픽셀, 예: 720 또는 420)
+    (표준 방식)
+    폴더 내 모든 CSV를 메모리로 읽어들인 후, pandas.concat으로 병합합니다.
     """
+    start_time = time.time()
+    print(f"'{source_dir}' 폴더에서 CSV 파일 검색 중...")
     
-    # 지원할 비디오 확장자 목록
-    video_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv')
+    # source_dir 경로와 그 하위 폴더까지 모든 .csv 파일을 검색합니다.
+    csv_files = glob.glob(os.path.join(source_dir, "**/*.csv"), recursive=True)
     
-    # 출력 폴더가 없으면 생성
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-        print(f"'{output_folder}' 폴더를 생성했습니다.")
+    if not csv_files:
+        print("❌ 검색된 CSV 파일이 없습니다. 경로를 확인하세요.")
+        return
 
-    # 입력 폴더 내의 모든 파일 순회
-    for filename in os.listdir(input_folder):
-        if filename.lower().endswith(video_extensions):
-            input_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
-            
-            print(f"'{filename}' 변환 중 (FFmpeg)...")
+    print(f"총 {len(csv_files)}개의 CSV 파일을 찾았습니다.")
+    
+    all_dataframes = []
+    for i, f in enumerate(csv_files, 1):
+        try:
+            print(f"  [{i}/{len(csv_files)}] 읽는 중: {f}")
+            df = pd.read_csv(f)
+            all_dataframes.append(df)
+        except Exception as e:
+            print(f"  ⚠️ 파일을 읽는 중 오류 발생: {f} ({e})")
 
-            try:
-                # FFmpeg 명령어 구성
-                # -i : 입력 파일
-                # -vf "scale=-2:720" : 비디오 필터. 세로 720px로 맞추고(-2는 가로 비율 자동 계산)
-                # -c:v libx264 : 비디오 코덱 H.264
-                # -c:a aac : 오디오 코덱 AAC (원본 오디오 복사시 -c:a copy)
-                # -preset medium : 인코딩 속도/품질 균형 (ultrafast, fast, medium, slow)
-                # -crf 23 : 품질 설정 (18~28 사이 권장. 낮을수록 고화질/고용량)
-                # -y : 덮어쓰기 허용
-                command = [
-                    'ffmpeg',
-                    '-i', input_path,
-                    '-vf', f'scale=-2:{target_height}',  # 비율 유지하며 세로 해상도 맞춤
-                    '-c:v', 'libx264',
-                    '-preset', 'fast',  # 속도 우선
-                    '-crf', '24',        # 적절한 품질 (숫자가 클수록 압축률이 높음)
-                    '-c:a', 'aac',        # 오디오 코덱
-                    '-b:a', '128k',       # 오디오 비트레이트
-                    '-y',                 # 대상 파일이 있어도 덮어쓰기
-                    output_path
-                ]
-                
-                # FFmpeg 명령어 실행
-                # capture_output=True, text=True로 설정하면 상세 출력을 볼 수 있음
-                # 여기서는 오류만 표기하도록 hide_banner와 loglevel 설정 추가
-                command.insert(1, '-hide_banner')
-                command.insert(2, '-loglevel')
-                command.insert(3, 'error') # 오류만 표시 (진행상황 보려면 'info')
+    if not all_dataframes:
+        print("❌ 유효한 데이터를 읽어오지 못했습니다.")
+        return
+        
+    print(f"\n... {len(all_dataframes)}개 데이터프레임 병합 중 (pandas.concat) ...")
+    
+    # 리스트에 담긴 모든 데이터프레임을 위아래로(axis=0) 합칩니다.
+    master_df = pd.concat(all_dataframes, ignore_index=True)
+    
+    print(f"✓ 총 {len(master_df)}개의 행으로 데이터가 통합되었습니다.")
+    
+    # (선택 사항) 'video_id' 컬럼 기준으로 중복된 행이 있는지 확인
+    # 만약 중복이 있다면, 팀원 간에 동일한 비디오를 처리했을 수 있습니다.
+    duplicates = master_df.duplicated(subset=['video_id']).sum()
+    if duplicates > 0:
+        print(f"  ⚠️ 경고: 'video_id'가 중복된 행이 {duplicates}개 있습니다.")
+        # 중복 제거가 필요하다면 아래 주석 해제
+        # master_df = master_df.drop_duplicates(subset=['video_id'], keep='first')
+        # print(f"     -> 중복 제거 후 {len(master_df)}개 행이 남았습니다.")
 
-                subprocess.run(command, check=True, encoding='utf-8')
-                
-                print(f"'{filename}' -> {target_height}p 변환 완료 (FFmpeg).")
+    # 최종 파일로 저장
+    try:
+        print(f"\n... 최종 파일 저장 중: {output_file} ...")
+        master_df.to_csv(output_file, index=False, encoding='utf-8-sig')
+        end_time = time.time()
+        print(f"\n✅ 성공! 통합된 파일이 '{output_file}'(으)로 저장되었습니다.")
+        print(f"   (총 소요 시간: {end_time - start_time:.2f}초)")
+    except Exception as e:
+        print(f"\n❌ 최종 파일 저장 실패: {e}")
 
-            except subprocess.CalledProcessError as e:
-                print(f"'{filename}' 변환 중 FFmpeg 오류 발생: {e}")
-            except Exception as e:
-                print(f"'{filename}' 처리 중 알 수 없는 오류: {e}")
-
-# --- 실행 ---
 if __name__ == "__main__":
-    # 1. 원본 영상이 있는 폴더 경로 (수정 필요)
-    SOURCE_FOLDER = "../data" 
-    
-    # 2. 변환된 영상을 저장할 폴더 경로 (수정 필요)
-    DEST_FOLDER = "../test"
-    
-    # 3. 목표 해상도 (720p 또는 480p)
-    TARGET_RESOLUTION_P = 240 # 240 변경 테스트
-    
-    print(f"비디오 변환 시작 (FFmpeg): {SOURCE_FOLDER} -> {DEST_FOLDER} ({TARGET_RESOLUTION_P}p)")
-    
-    convert_videos_ffmpeg(SOURCE_FOLDER, DEST_FOLDER, TARGET_RESOLUTION_P)
-    
-    print("모든 작업이 완료되었습니다.")
+    # 스크립트 실행 시 CSV 파일이 있는 폴더가 없다면 생성
+    if not os.path.exists(CSV_SOURCE_DIR):
+        os.makedirs(CSV_SOURCE_DIR)
+        print(f"'{CSV_SOURCE_DIR}' 폴더를 생성했습니다.")
+        print("이 폴더에 팀원들의 '1_statistics_all_summary.csv' 파일들을 넣고 다시 실행해주세요.")
+    else:
+        merge_csv_files(CSV_SOURCE_DIR, OUTPUT_MASTER_CSV)
