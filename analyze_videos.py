@@ -10,7 +10,7 @@ def set_korean_font():
     Matplotlib에서 한글을 지원하기 위한 폰트 설정 (Windows, macOS, Linux 대응)
     """
     # 사용 가능한 폰트 리스트 확인 (디버깅용, 평소엔 주석 처리)
-    # print([f.name for f in fm.fontManager.ttflist])
+    # print([f.name for f in fm.fontManager.ttflist])DWQQ
     
     font_name = None
     if os.name == 'nt':  # Windows
