@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib.pyplo
 
 # --- 1. 사용자 설정 ---
 
-# ⚠️ [수정필요] 원본 통합 CSV 파일 경로
+# ⚠️ [수정필요] 원본 통합 CSV 파일 경로A
 MERGED_CSV_FILE = "./master_summary_v1_standard.csv" 
 
 # ⚠️ [출력 1] 정제된 데이터가 저장될 CSV 파일 이름 (v11로 변경)
@@ -292,4 +292,5 @@ if __name__ == "__main__":
     print("🎉 모든 작업 완료!")
     print(f"  - 정제된 CSV: {OUTPUT_CLEANED_CSV}")
     print(f"  - 새 분포도: {CLEANED_PLOT_DIR}")
+
     print("="*70)
