@@ -7,7 +7,7 @@ import sys
 # ==========================================
 CSV_FILE_PATH = 'master_summary_v11_cleaned_final.csv'      # video_id가 포함된 CSV 파일 경로
 NPY_FOLDER_PATH = './2_npy_timeseries'  # NPY 파일들이 저장된 폴더 경로
-ID_COLUMN_NAME = 'video_id'     # CSV 파일 내의 ID 컬럼 헤더 이름
+ID_COLUMN_NAME = 'video_id'     # CSV 파일 내의 ID 컬럼 헤더 이름ㅁ
 # ==========================================
 
 def delete_unmatched_files():
@@ -79,3 +79,4 @@ if __name__ == "__main__":
         delete_unmatched_files()
     else:
         print("작업이 취소되었습니다.")
+
