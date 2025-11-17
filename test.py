@@ -7,7 +7,7 @@ import time
 # (예: 이 스크립트와 같은 위치에 'all_csvs'라는 폴더를 만드세요)
 CSV_SOURCE_DIR = "./data" 
 
-# 2. 통합된 마스터 CSV 파일을 저장할 경로와 이름
+# 2. 통합된 마스터 CSV 파일을 저장할 경로와 이름ㄴ
 OUTPUT_MASTER_CSV = "./master_summary_v1_standard.csv"
 
 def merge_csv_files(source_dir, output_file):
@@ -73,4 +73,5 @@ if __name__ == "__main__":
         print(f"'{CSV_SOURCE_DIR}' 폴더를 생성했습니다.")
         print("이 폴더에 팀원들의 '1_statistics_all_summary.csv' 파일들을 넣고 다시 실행해주세요.")
     else:
+
         merge_csv_files(CSV_SOURCE_DIR, OUTPUT_MASTER_CSV)
