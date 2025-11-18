@@ -86,6 +86,7 @@ uvicorn app.main:app --reload
 
 ## 7. 외부 접속 (ngrok)
 ```
+(두번째 터미널)
 ./ngrok http 8000
 ```
 
