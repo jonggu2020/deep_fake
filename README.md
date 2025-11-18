@@ -85,7 +85,7 @@ uvicorn app.main:app --reload
 
 ## 7. 외부 접속 (ngrok)
 ```
-ngrok http 8000
+./ngrok http 8000
 ```
 
 Swagger:
