@@ -80,6 +80,7 @@ pip install -r requirements.txt
 
 ## 6. 서버 실행
 ```
+(첫번째 터미널)
 uvicorn app.main:app --reload
 ```
 
