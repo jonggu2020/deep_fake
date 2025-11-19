@@ -18,7 +18,7 @@ def merge_csv_files(source_dir, output_file):
     start_time = time.time()
     print(f"'{source_dir}' 폴더에서 CSV 파일 검색 중...")
     
-    # source_dir 경로와 그 하위 폴더까지 모든 .csv 파일을 검색합니다.
+    # source_dir 경로와 그 하위 폴더까지 모든 .csv 파일을 검색합니다.ㄴ
     csv_files = glob.glob(os.path.join(source_dir, "**/*.csv"), recursive=True)
     
     if not csv_files:
@@ -75,3 +75,4 @@ if __name__ == "__main__":
     else:
 
         merge_csv_files(CSV_SOURCE_DIR, OUTPUT_MASTER_CSV)
+
