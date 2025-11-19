@@ -9,7 +9,7 @@ import time
 
 # ⚠️ [조정 필요] 표준 편차(Std) 임계값
 # 이 값보다 Std가 낮으면 '의심' 파일로 분류됩니다.ㄴ
-# (이전의 '침묵' 이미지의 Std 값을 참고하여 40.0 ~ 60.0 사이로 설정하세요)
+# (이전의 '침묵' 이미지의 Std 값을 참고하여 40.0 ~ 60.0 사이로 설정하세요)ㅁ
 SUSPICIOUS_THRESHOLD = 45.0 
 
 # ⚠️ [수정필요 1]
@@ -121,3 +121,4 @@ if __name__ == "__main__":
     end_time = time.time()
 
     print(f"총 소요 시간: {end_time - start_time:.2f}초")
+
