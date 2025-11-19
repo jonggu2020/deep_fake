@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib.pyplo
 # --- 1. 사용자 설정 ---
 
 # ⚠️ [수정필요]
-# 이전 단계에서 통합한 'master_summary_v1.csv' 또는 'master_summary_v2_optimized.csv'
+# 이전 단계에서 통합한 'master_summary_v1.csv' 또는 'master_summary_v2_optimized.csv'ㄴ
 # 파일의 정확한 경로를 지정하세요.
 MERGED_CSV_FILE = "./master_summary_v1_standard.csv" 
 
@@ -174,3 +174,4 @@ if __name__ == "__main__":
     # 스크립트 실행
 
     analyze_distributions(csv_file=MERGED_CSV_FILE, plot_dir=OUTPUT_PLOT_DIR)
+
