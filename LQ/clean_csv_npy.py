@@ -92,7 +92,7 @@ def synchronize_npy_with_confirmation(csv_path, folder_path, id_column='video_id
 # ========================================================
 
 # 1. CSV 파일 경로
-target_csv_path = './final_cleaned_interactive.csv'
+target_csv_path = './cleaned_statistics_all_merged.csv'
 
 # 2. NPY 파일이 있는 폴더 경로
 target_npy_folder = './2_npy_timeseries'
