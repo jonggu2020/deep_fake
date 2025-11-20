@@ -18,6 +18,7 @@ from app.models.video import Video
 from app.schemas.video import DetectResult
 from app.services.youtube import download_youtube_video
 from app.services.inference import run_inference_on_video
+from app.services.firebase_logger import save_detection_log
 
 router = APIRouter(prefix="/detect", tags=["detect"])
 
@@ -70,6 +71,22 @@ async def detect_from_upload(
     db.commit()
     db.refresh(video)
 
+    # Firebase 로그 저장 (가능한 경우만)
+    try:
+        save_detection_log(video.user_id, {
+            "status": "completed",
+            "source_type": video.source_type,
+            "model_result": {
+                "prediction": "Deepfake" if is_deepfake else "Real",
+                "confidence": confidence,
+            },
+            "created_at": video.created_at.isoformat(),
+            "video_id": video.id,
+            "file_path": video.file_path,
+        })
+    except Exception:
+        pass
+
     return DetectResult(
         video_id=video.id,
         is_deepfake=is_deepfake,
@@ -119,6 +136,23 @@ def detect_from_youtube(
     video.confidence = confidence
     db.commit()
     db.refresh(video)
+
+    # Firebase 로그 저장 (가능한 경우만)
+    try:
+        save_detection_log(video.user_id, {
+            "status": "completed",
+            "source_type": video.source_type,
+            "model_result": {
+                "prediction": "Deepfake" if is_deepfake else "Real",
+                "confidence": confidence,
+            },
+            "created_at": video.created_at.isoformat(),
+            "video_id": video.id,
+            "file_path": video.file_path,
+            "source_url": video.source_url,
+        })
+    except Exception:
+        pass
 
     return DetectResult(
         video_id=video.id,

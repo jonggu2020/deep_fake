@@ -7,3 +7,4 @@ pydantic[email]
 pydantic-settings
 passlib[bcrypt]
 pytube
+firebase-admin

@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     DB_PORT: str = "3306"
     DB_NAME: str = "deepfake_db"
 
+    # Firebase (선택적) 환경 변수
+    FIREBASE_CRED_PATH: str | None = None
+    FIREBASE_DB_URL: str | None = None
+
     class Config:
         # .env 파일에서 환경변수를 읽어오겠다는 의미
         env_file = ".env"
