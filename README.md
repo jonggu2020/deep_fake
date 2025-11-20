@@ -107,3 +107,12 @@ https://xxxx.ngrok-free.app/docs
 - MySQL/Firebase 연동
 - JWT 인증
 - 로깅/예외 처리 추가
+
+## 10. 통합 가이드 요약
+프론트(HOTTI) + Firebase 로그 저장 + 선택적 MySQL 사용을 위한 상세 절차는 `INTEGRATION_GUIDE.md` 참고.
+
+핵심 요약:
+- `.env.example` 복사 후 `.env` 작성 (MySQL/Firebase 경로 설정)
+- `secrets/firebase-service-account.json` 키 파일 배치 (Git 추적 제외)
+- 필요 시 `MYSQL_URL` 환경변수로 MySQL 활성화 (미설정 시 SQLite)
+- 업로드/유튜브 탐지 후 Firebase 로그 자동 기록 (키 없으면 건너뜀)

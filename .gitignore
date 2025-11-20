@@ -10,6 +10,11 @@ venv/
 *.db
 *.sqlite3
 
+# Firebase / Secrets
+secrets/
+*.json
+
+
 # Uploads or user-provided files (영상 저장 폴더)
 uploads/
 output/
@@ -32,6 +37,9 @@ Thumbs.db
 *.pth
 *.pt
 *.h5
+
+# Environment example (실제 .env는 추적 안 함)
+.env
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/

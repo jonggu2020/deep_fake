@@ -7,18 +7,24 @@
 - 그 외 models, routers, services 코드는 그대로 재사용 가능하도록 구성한다.
 """
 
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from app.core.config import settings
 
 # SQLite 파일 DB 경로 (프로젝트 루트 기준)
 # 예) deepfake_backend_commented/deepfake.db 파일이 생성된다.
-DATABASE_URL = "sqlite:///./deepfake.db"
+MYSQL_URL_ENV = os.getenv("MYSQL_URL")
+DATABASE_URL = MYSQL_URL_ENV if MYSQL_URL_ENV else "sqlite:///./deepfake.db"
 
 # SQLite에서만 필요한 옵션(check_same_thread=False)
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    engine = create_engine(DATABASE_URL)
 
 # DB 세션을 만들어 주는 공장(factory) 같은 것
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
