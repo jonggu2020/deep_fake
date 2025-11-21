@@ -17,7 +17,7 @@ FastAPI 기반으로 만들어졌고, 서버/네트워크를 잘 모르는 사�
 - SQLAlchemy
 - Pydantic / pydantic-settings
 - Passlib[bcrypt]
-- Pytube
+- yt-dlp (YouTube 다운로드)
 - ngrok
 
 ## 3. 프로젝트 구조
@@ -177,3 +177,39 @@ streamlit run main.py --server.port 8501
 - `secrets/firebase-service-account.json` 키 파일 배치 (Git 추적 제외)
 - 필요 시 `MYSQL_URL` 환경변수로 MySQL 활성화 (미설정 시 SQLite)
 - 업로드/유튜브 탐지 후 Firebase 로그 자동 기록 (키 없으면 건너뜀)
+
+## 10. 최근 업데이트 (2025-11-21)
+
+### YouTube 다운로드 라이브러리 변경
+- **이전:** pytube (YouTube API 변경에 취약, 자주 오류 발생)
+- **변경:** yt-dlp (안정적이고 지속적으로 업데이트됨)
+- **영향받는 파일:**
+  - `requirements.txt`: pytube → yt-dlp
+  - `app/services/youtube.py`: 전체 구현 변경
+
+### 프론트엔드 API 통신 수정
+- **문제:** YouTube 탐지 API 호출 시 422 에러 (필드 검증 실패)
+- **원인:** 백엔드는 Form 데이터를 기대하는데 프론트엔드가 JSON으로 전송
+- **수정:** `deepfake_web/services/backend_api.py`의 `post_detect_youtube()` 함수
+  - `requests.post(..., json=payload)` → `requests.post(..., data=data)`
+- **결과:** YouTube 링크 탐지 정상 작동 (Status 200)
+
+### 테스트 완료
+- ✅ YouTube 영상 다운로드 (`yt-dlp` 사용)
+- ✅ 딥페이크 탐지 API 호출 (Form 데이터 전송)
+- ✅ 결과 반환 및 DB 저장
+- ✅ Firebase 로그 기록
+
+### 설치 방법
+기존 환경에서 업데이트하려면:
+```bash
+# conda 환경 활성화
+conda activate deepfake_backend_env
+
+# yt-dlp 설치 (pytube 제거)
+pip uninstall pytube -y
+pip install yt-dlp
+
+# 서버 재시작
+uvicorn app.main:app --reload
+```

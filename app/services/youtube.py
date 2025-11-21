@@ -4,8 +4,9 @@
 - 다운로드된 파일의 경로를 반환해서, 이후 추론(inference)에 사용한다.
 """
 
+import os
 from pathlib import Path
-from pytube import YouTube
+import yt_dlp
 
 # 업로드 및 다운로드 된 영상이 저장될 디렉토리
 UPLOAD_DIR = Path("uploads")
@@ -22,16 +23,18 @@ def download_youtube_video(url: str) -> str:
     """
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    yt = YouTube(url)
+    # yt-dlp 옵션 설정
+    ydl_opts = {
+        'format': 'best[ext=mp4]/best',  # mp4 우선, 없으면 최고 화질
+        'outtmpl': str(UPLOAD_DIR / '%(id)s.%(ext)s'),  # 파일명: 비디오ID.mp4
+        'quiet': True,  # 로그 최소화
+        'no_warnings': True,
+    }
 
-    # 가장 해상도가 높은 progressive(mp4) 스트림 하나를 선택
-    stream = (
-        yt.streams
-        .filter(progressive=True, file_extension="mp4")
-        .order_by("resolution")
-        .desc()
-        .first()
-    )
-
-    output_path = stream.download(output_path=str(UPLOAD_DIR))
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        video_id = info['id']
+        ext = info['ext']
+        output_path = str(UPLOAD_DIR / f"{video_id}.{ext}")
+    
     return output_path

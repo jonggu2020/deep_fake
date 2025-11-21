@@ -44,13 +44,13 @@ def post_detect_youtube(
     youtube_url: str,
 ):
     url = base_url.rstrip("/") + "/detect/youtube"
-    payload = {"url": youtube_url}
+    data = {"url": youtube_url}  # Form 데이터로 전송
 
-    headers = {"accept": "application/json"}
+    headers = {}
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
 
-    return requests.post(url, headers=headers, json=payload, timeout=TIMEOUT)
+    return requests.post(url, headers=headers, data=data, timeout=TIMEOUT)
 
 
 def get_root(base_url: str):
