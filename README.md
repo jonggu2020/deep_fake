@@ -127,7 +127,8 @@ streamlit run main.py
 uvicorn app.main:app --reload --port 8000
 
 # 터미널 2: ngrok으로 백엔드 터널링
-ngrok http 8000
+# ngrok 파일 위치로 cd 이동 후 .\ngrok.exe http 8000
+.\ngrok http 8000
 # 출력된 URL 복사 (예: https://xxxx-xxxx.ngrok-free.app)
 
 # 터미널 3: 프론트엔드
