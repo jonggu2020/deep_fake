@@ -26,3 +26,5 @@ class DetectResult(BaseModel):
     video_id: int
     is_deepfake: int
     confidence: float
+    landmark_video_path: Optional[str] = None
+    landmark_info: Optional[dict] = None

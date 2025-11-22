@@ -81,50 +81,6 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                     label="신뢰도",
                                     value=f"{confidence * 100:.1f}%"
                                 )
-                            
-                            # 랜드마크 영상 표시
-                            landmark_path = data.get("landmark_video_path")
-                            if landmark_path:
-                                st.markdown("---")
-                                st.subheader("🎯 얼굴 랜드마크 추출 영상")
-                                
-                                # 랜드마크 처리 정보 표시
-                                landmark_info = data.get("landmark_info")
-                                if landmark_info:
-                                    info_col1, info_col2, info_col3 = st.columns(3)
-                                    with info_col1:
-                                        st.metric("처리 시간", f"{landmark_info.get('processing_time', 0):.2f}초")
-                                    with info_col2:
-                                        st.metric("처리 프레임", f"{landmark_info.get('processed_frames', 0)}")
-                                    with info_col3:
-                                        st.metric("얼굴 감지", f"{landmark_info.get('faces_detected', 0)}프레임")
-                                
-                                # 랜드마크 영상 표시
-                                video_id = data.get("video_id")
-                                landmark_url = f"{base_url}/detect/landmark/{video_id}"
-                                
-                                st.write("**랜드마크 영상:**")
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                with col2:
-                                    try:
-                                        # API로 영상 다운로드
-                                        import requests
-                                        with st.spinner("영상 로딩 중..."):
-                                            video_response = requests.get(landmark_url, timeout=15, stream=True)
-                                            if video_response.status_code == 200:
-                                                video_bytes = video_response.content
-                                                st.video(video_bytes)
-                                            else:
-                                                st.error(f"영상 로드 실패: HTTP {video_response.status_code}")
-                                                st.info("아래 다운로드 링크를 이용해주세요.")
-                                    except Exception as e:
-                                        st.error(f"영상 표시 오류: {str(e)}")
-                                        st.info("아래 다운로드 링크를 이용해주세요.")
-                                
-                                # 다운로드 링크
-                                st.markdown(f"[📥 랜드마크 영상 다운로드]({landmark_url})")
-                            else:
-                                st.info("ℹ️  랜드마크 영상이 생성되지 않았습니다.")
 
                         # DB에 로그 저장
                         db.save_detection_history(
@@ -187,50 +143,6 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                     label="신뢰도",
                                     value=f"{confidence * 100:.1f}%"
                                 )
-                            
-                            # 랜드마크 영상 표시
-                            landmark_path = data.get("landmark_video_path")
-                            if landmark_path:
-                                st.markdown("---")
-                                st.subheader("🎯 얼굴 랜드마크 추출 영상")
-                                
-                                # 랜드마크 처리 정보 표시
-                                landmark_info = data.get("landmark_info")
-                                if landmark_info:
-                                    info_col1, info_col2, info_col3 = st.columns(3)
-                                    with info_col1:
-                                        st.metric("처리 시간", f"{landmark_info.get('processing_time', 0):.2f}초")
-                                    with info_col2:
-                                        st.metric("처리 프레임", f"{landmark_info.get('processed_frames', 0)}")
-                                    with info_col3:
-                                        st.metric("얼굴 감지", f"{landmark_info.get('faces_detected', 0)}프레임")
-                                
-                                # 랜드마크 영상 표시
-                                video_id = data.get("video_id")
-                                landmark_url = f"{base_url}/detect/landmark/{video_id}"
-                                
-                                st.write("**랜드마크 영상:**")
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                with col2:
-                                    try:
-                                        # API로 영상 다운로드
-                                        import requests
-                                        with st.spinner("영상 로딩 중..."):
-                                            video_response = requests.get(landmark_url, timeout=15, stream=True)
-                                            if video_response.status_code == 200:
-                                                video_bytes = video_response.content
-                                                st.video(video_bytes)
-                                            else:
-                                                st.error(f"영상 로드 실패: HTTP {video_response.status_code}")
-                                                st.info("아래 다운로드 링크를 이용해주세요.")
-                                    except Exception as e:
-                                        st.error(f"영상 표시 오류: {str(e)}")
-                                        st.info("아래 다운로드 링크를 이용해주세요.")
-                                
-                                # 다운로드 링크
-                                st.markdown(f"[📥 랜드마크 영상 다운로드]({landmark_url})")
-                            else:
-                                st.info("ℹ️  랜드마크 영상이 생성되지 않았습니다.")
 
                         db.save_detection_history(
                             username=username,
@@ -264,15 +176,5 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                     if result:
                         with st.expander("결과 JSON 보기", expanded=False):
                             st.json(result)
-                        
-                        # 랜드마크 영상 링크 표시
-                        landmark_path = result.get("landmark_video_path")
-                        if landmark_path:
-                            video_id = result.get("video_id")
-                            if video_id:
-                                # base_url을 세션에서 가져오거나 기본값 사용
-                                hist_base_url = st.session_state.get("base_url", "http://localhost:8000")
-                                landmark_url = f"{hist_base_url}/detect/landmark/{video_id}"
-                                st.markdown(f"[🎯 랜드마크 영상 보기]({landmark_url})")
                 except Exception:
                     st.text(row["result_json"])

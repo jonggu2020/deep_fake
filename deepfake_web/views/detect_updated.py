@@ -99,7 +99,7 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                     with info_col3:
                                         st.metric("얼굴 감지", f"{landmark_info.get('faces_detected', 0)}프레임")
                                 
-                                # 랜드마크 영상 표시
+                                # 랜드마크 영상 다운로드 및 표시
                                 video_id = data.get("video_id")
                                 landmark_url = f"{base_url}/detect/landmark/{video_id}"
                                 
@@ -107,19 +107,10 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                 col1, col2, col3 = st.columns([1, 2, 1])
                                 with col2:
                                     try:
-                                        # API로 영상 다운로드
-                                        import requests
-                                        with st.spinner("영상 로딩 중..."):
-                                            video_response = requests.get(landmark_url, timeout=15, stream=True)
-                                            if video_response.status_code == 200:
-                                                video_bytes = video_response.content
-                                                st.video(video_bytes)
-                                            else:
-                                                st.error(f"영상 로드 실패: HTTP {video_response.status_code}")
-                                                st.info("아래 다운로드 링크를 이용해주세요.")
+                                        # 영상 표시
+                                        st.video(landmark_url)
                                     except Exception as e:
-                                        st.error(f"영상 표시 오류: {str(e)}")
-                                        st.info("아래 다운로드 링크를 이용해주세요.")
+                                        st.warning(f"영상을 표시할 수 없습니다: {e}")
                                 
                                 # 다운로드 링크
                                 st.markdown(f"[📥 랜드마크 영상 다운로드]({landmark_url})")
@@ -205,7 +196,7 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                     with info_col3:
                                         st.metric("얼굴 감지", f"{landmark_info.get('faces_detected', 0)}프레임")
                                 
-                                # 랜드마크 영상 표시
+                                # 랜드마크 영상 다운로드 및 표시
                                 video_id = data.get("video_id")
                                 landmark_url = f"{base_url}/detect/landmark/{video_id}"
                                 
@@ -213,19 +204,10 @@ def render_detect_page(base_url: str, access_token: str | None, username: str | 
                                 col1, col2, col3 = st.columns([1, 2, 1])
                                 with col2:
                                     try:
-                                        # API로 영상 다운로드
-                                        import requests
-                                        with st.spinner("영상 로딩 중..."):
-                                            video_response = requests.get(landmark_url, timeout=15, stream=True)
-                                            if video_response.status_code == 200:
-                                                video_bytes = video_response.content
-                                                st.video(video_bytes)
-                                            else:
-                                                st.error(f"영상 로드 실패: HTTP {video_response.status_code}")
-                                                st.info("아래 다운로드 링크를 이용해주세요.")
+                                        # 영상 표시
+                                        st.video(landmark_url)
                                     except Exception as e:
-                                        st.error(f"영상 표시 오류: {str(e)}")
-                                        st.info("아래 다운로드 링크를 이용해주세요.")
+                                        st.warning(f"영상을 표시할 수 없습니다: {e}")
                                 
                                 # 다운로드 링크
                                 st.markdown(f"[📥 랜드마크 영상 다운로드]({landmark_url})")

@@ -8,3 +8,6 @@ pydantic-settings
 passlib[bcrypt]
 yt-dlp
 firebase-admin
+opencv-python
+mediapipe
+numpy

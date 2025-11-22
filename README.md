@@ -19,6 +19,9 @@ FastAPI 기반으로 만들어졌고, 서버/네트워크를 잘 모르는 사�
 - Passlib[bcrypt]
 - yt-dlp (YouTube 다운로드)
 - ngrok
+- mediapipe (FaceMesh/FaceDetection)
+- opencv-python (프레임 처리)
+- numpy (mediapipe 호환: 1.24.x 권장)
 
 ## 3. 프로젝트 구조
 ```
@@ -178,7 +181,18 @@ streamlit run main.py --server.port 8501
 - 필요 시 `MYSQL_URL` 환경변수로 MySQL 활성화 (미설정 시 SQLite)
 - 업로드/유튜브 탐지 후 Firebase 로그 자동 기록 (키 없으면 건너뜀)
 
-## 10. 최근 업데이트 (2025-11-21)
+## 10. 최근 업데이트
+
+### 2025-11-22: 얼굴 랜드마크 추출 기능(v5) 안정화 🎯
+- **구현 파일:** `app/services/landmark.py` (FaceMesh + FaceDetection fallback, ffmpeg 재인코딩)
+- **응답 필드:** `landmark_video_path` (정적 `/uploads` 경로)
+- **처리 범위:** 앞부분 최대 3초 프레임만 빠르게 분석 후 그린 결과 영상 생성
+- **재생 안정화:** ffmpeg H.264 (`libx264`, `+faststart`) 변환 및 실패 시 원본 mp4v 사용
+- **Fallback:** 얼굴 미검출 시 'NO FACE' 또는 박스 표시, 디코딩 실패 시 placeholder 영상 생성
+- **사용 가이드:** `LANDMARK_GUIDE.md` 참고 (세부 설정 및 문제 해결)
+- **삭제/폐기 문서:** `CHANGES_SUMMARY.md`, `VIDEO_PLAYBACK_FIX.md`, `V4_CHANGES.md`, `FINAL_SETUP.md` (역사 기록용이지만 현재 빌드에는 불필요)
+
+### 2025-11-21: YouTube 다운로드 라이브러리 변경
 
 ### YouTube 다운로드 라이브러리 변경
 - **이전:** pytube (YouTube API 변경에 취약, 자주 오류 발생)
@@ -210,6 +224,13 @@ conda activate deepfake_backend_env
 pip uninstall pytube -y
 pip install yt-dlp
 
+# 랜드마크 관련 패키지 (필요 시 재설치)
+pip install mediapipe opencv-python numpy==1.24.3
+
 # 서버 재시작
 uvicorn app.main:app --reload
 ```
+
+### 문서 구성 정리
+- 유지: `README.md`, `INTEGRATION_GUIDE.md`, `LANDMARK_GUIDE.md`
+- 제거(히스토리만 의미): `CHANGES_SUMMARY.md`, `VIDEO_PLAYBACK_FIX.md`, `V4_CHANGES.md`, `FINAL_SETUP.md`

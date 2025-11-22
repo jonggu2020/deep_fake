@@ -28,6 +28,9 @@ class Video(Base):
     # 서버 내에 저장된 실제 파일 경로
     file_path = Column(String(500), nullable=False)
 
+    # 랜드마크 추출 영상 경로 (생성된 경우)
+    landmark_video_path = Column(String(500), nullable=True)
+
     # 딥페이크 여부 (1: 딥페이크, 0: 정상, None: 아직 분석 전)
     is_deepfake = Column(Integer, nullable=True)
 

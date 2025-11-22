@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -19,6 +20,7 @@ from app.schemas.video import DetectResult
 from app.services.youtube import download_youtube_video
 from app.services.inference import run_inference_on_video
 from app.services.firebase_logger import save_detection_log
+from app.services.landmark_extractor import create_landmark_video
 
 router = APIRouter(prefix="/detect", tags=["detect"])
 
@@ -43,8 +45,9 @@ async def detect_from_upload(
     동작:
         1) 파일을 서버의 uploads 디렉토리에 저장
         2) Video 레코드를 DB에 추가
-        3) inference.run_inference_on_video() 호출
-        4) 결과를 DB에 업데이트 후 DetectResult 형태로 반환
+        3) 랜드마크 추출 영상 생성 (백그라운드)
+        4) inference.run_inference_on_video() 호출
+        5) 결과를 DB에 업데이트 후 DetectResult 형태로 반환
     """
     # 1) 파일 저장
     file_path = UPLOAD_DIR / file.filename
@@ -62,10 +65,31 @@ async def detect_from_upload(
     db.commit()
     db.refresh(video)
 
-    # 3) 딥페이크 탐지 수행 (현재는 랜덤)
+    # 3) 랜드마크 추출 영상 생성
+    landmark_result = None
+    try:
+        print(f"🎯 랜드마크 추출 시작: {file_path}")
+        landmark_result = create_landmark_video(
+            input_path=str(file_path),
+            output_dir="uploads/landmarks",
+            max_processing_time=3.0
+        )
+        
+        if landmark_result["success"]:
+            video.landmark_video_path = landmark_result["output_path"]
+            print(f"✅ 랜드마크 영상 생성 완료: {landmark_result['output_path']}")
+            print(f"   - 처리 시간: {landmark_result['processing_time']}초")
+            print(f"   - 처리 프레임: {landmark_result['processed_frames']}/{landmark_result['total_frames']}")
+        else:
+            print(f"⚠️  랜드마크 추출 실패: {landmark_result.get('error', 'Unknown error')}")
+    except Exception as e:
+        print(f"❌ 랜드마크 추출 중 오류: {str(e)}")
+        landmark_result = {"success": False, "error": str(e)}
+
+    # 4) 딥페이크 탐지 수행 (현재는 랜덤)
     is_deepfake, confidence = run_inference_on_video(str(file_path))
 
-    # 4) 결과를 DB에 저장
+    # 5) 결과를 DB에 저장
     video.is_deepfake = is_deepfake
     video.confidence = confidence
     db.commit()
@@ -73,7 +97,7 @@ async def detect_from_upload(
 
     # Firebase 로그 저장 (가능한 경우만)
     try:
-        save_detection_log(video.user_id, {
+        log_data = {
             "status": "completed",
             "source_type": video.source_type,
             "model_result": {
@@ -83,7 +107,10 @@ async def detect_from_upload(
             "created_at": video.created_at.isoformat(),
             "video_id": video.id,
             "file_path": video.file_path,
-        })
+        }
+        if video.landmark_video_path:
+            log_data["landmark_video_path"] = video.landmark_video_path
+        save_detection_log(video.user_id, log_data)
     except Exception:
         pass
 
@@ -91,6 +118,12 @@ async def detect_from_upload(
         video_id=video.id,
         is_deepfake=is_deepfake,
         confidence=confidence,
+        landmark_video_path=video.landmark_video_path,
+        landmark_info={
+            "processing_time": landmark_result.get("processing_time") if landmark_result else None,
+            "processed_frames": landmark_result.get("processed_frames") if landmark_result else None,
+            "faces_detected": landmark_result.get("faces_detected") if landmark_result else None,
+        } if landmark_result and landmark_result.get("success") else None
     )
 
 
@@ -108,8 +141,9 @@ def detect_from_youtube(
     동작:
         1) url에 해당하는 유튜브 영상을 downloads/uploads 폴더에 mp4로 저장
         2) Video 레코드를 DB에 추가
-        3) inference.run_inference_on_video() 호출
-        4) 결과를 DB에 업데이트 후 DetectResult 형태로 반환
+        3) 랜드마크 추출 영상 생성
+        4) inference.run_inference_on_video() 호출
+        5) 결과를 DB에 업데이트 후 DetectResult 형태로 반환
     """
     try:
         # 1) 유튜브 영상 다운로드
@@ -128,10 +162,31 @@ def detect_from_youtube(
     db.commit()
     db.refresh(video)
 
-    # 3) 딥페이크 탐지 수행 (현재는 랜덤)
+    # 3) 랜드마크 추출 영상 생성
+    landmark_result = None
+    try:
+        print(f"🎯 랜드마크 추출 시작: {file_path}")
+        landmark_result = create_landmark_video(
+            input_path=file_path,
+            output_dir="uploads/landmarks",
+            max_processing_time=3.0
+        )
+        
+        if landmark_result["success"]:
+            video.landmark_video_path = landmark_result["output_path"]
+            print(f"✅ 랜드마크 영상 생성 완료: {landmark_result['output_path']}")
+            print(f"   - 처리 시간: {landmark_result['processing_time']}초")
+            print(f"   - 처리 프레임: {landmark_result['processed_frames']}/{landmark_result['total_frames']}")
+        else:
+            print(f"⚠️  랜드마크 추출 실패: {landmark_result.get('error', 'Unknown error')}")
+    except Exception as e:
+        print(f"❌ 랜드마크 추출 중 오류: {str(e)}")
+        landmark_result = {"success": False, "error": str(e)}
+
+    # 4) 딥페이크 탐지 수행 (현재는 랜덤)
     is_deepfake, confidence = run_inference_on_video(file_path)
 
-    # 4) 결과를 DB에 저장
+    # 5) 결과를 DB에 저장
     video.is_deepfake = is_deepfake
     video.confidence = confidence
     db.commit()
@@ -139,7 +194,7 @@ def detect_from_youtube(
 
     # Firebase 로그 저장 (가능한 경우만)
     try:
-        save_detection_log(video.user_id, {
+        log_data = {
             "status": "completed",
             "source_type": video.source_type,
             "model_result": {
@@ -150,7 +205,10 @@ def detect_from_youtube(
             "video_id": video.id,
             "file_path": video.file_path,
             "source_url": video.source_url,
-        })
+        }
+        if video.landmark_video_path:
+            log_data["landmark_video_path"] = video.landmark_video_path
+        save_detection_log(video.user_id, log_data)
     except Exception:
         pass
 
@@ -158,4 +216,45 @@ def detect_from_youtube(
         video_id=video.id,
         is_deepfake=is_deepfake,
         confidence=confidence,
+        landmark_video_path=video.landmark_video_path,
+        landmark_info={
+            "processing_time": landmark_result.get("processing_time") if landmark_result else None,
+            "processed_frames": landmark_result.get("processed_frames") if landmark_result else None,
+            "faces_detected": landmark_result.get("faces_detected") if landmark_result else None,
+        } if landmark_result and landmark_result.get("success") else None
+    )
+
+
+@router.get("/landmark/{video_id}")
+def get_landmark_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+):
+    """생성된 랜드마크 영상을 다운로드하는 엔드포인트.
+    
+    Args:
+        video_id: 비디오 ID
+    
+    Returns:
+        랜드마크 영상 파일
+    """
+    # DB에서 비디오 정보 조회
+    video = db.query(Video).filter(Video.id == video_id).first()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if not video.landmark_video_path:
+        raise HTTPException(status_code=404, detail="Landmark video not generated yet")
+    
+    # 파일이 실제로 존재하는지 확인
+    landmark_path = Path(video.landmark_video_path)
+    if not landmark_path.exists():
+        raise HTTPException(status_code=404, detail="Landmark video file not found")
+    
+    # 파일 반환
+    return FileResponse(
+        path=str(landmark_path),
+        media_type="video/mp4",
+        filename=f"landmark_{video_id}.mp4"
     )

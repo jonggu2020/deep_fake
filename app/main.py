@@ -6,6 +6,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
 from app.routers import auth, detect
@@ -32,6 +33,13 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(auth.router)
 app.include_router(detect.router)
+
+# Static files serving (업로드된 파일 및 랜드마크 영상 제공)
+# uploads 디렉토리를 /uploads 경로로 제공
+from pathlib import Path
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")

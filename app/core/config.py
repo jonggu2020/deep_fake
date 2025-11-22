@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # Firebase (선택적) 환경 변수
     FIREBASE_CRED_PATH: str | None = None
     FIREBASE_DB_URL: str | None = None
+    
+    # ffmpeg 경로 설정 (Windows에서 PATH에 없을 경우)
+    FFMPEG_PATH: str | None = None
 
     class Config:
         # .env 파일에서 환경변수를 읽어오겠다는 의미
