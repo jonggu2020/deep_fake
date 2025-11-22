@@ -176,12 +176,53 @@ streamlit run main.py --server.port 8501
 프론트(HOTTI) + Firebase 로그 저장 + 선택적 MySQL 사용을 위한 상세 절차는 `INTEGRATION_GUIDE.md` 참고.
 
 핵심 요약:
-- `.env.example` 복사 후 `.env` 작성 (MySQL/Firebase 경로 설정)
+- `.env` 파일 작성 (MySQL/Firebase 경로 설정)
 - `secrets/firebase-service-account.json` 키 파일 배치 (Git 추적 제외)
 - 필요 시 `MYSQL_URL` 환경변수로 MySQL 활성화 (미설정 시 SQLite)
 - 업로드/유튜브 탐지 후 Firebase 로그 자동 기록 (키 없으면 건너뜀)
+- `DeepFake_DB/DB_test.py`로 연동 테스트 가능
 
-## 10. 최근 업데이트
+## 10. 데이터베이스 및 Firebase 연동
+
+### 환경 변수 설정 (.env)
+프로젝트 루트에 `.env` 파일 생성:
+```env
+# Firebase 설정
+FIREBASE_CREDENTIALS=secrets/firebase-service-account.json
+FIREBASE_DATABASE_URL=https://sw-deepfake-project-default-rtdb.firebaseio.com/
+ENABLE_FIREBASE_LOG=1
+
+# MySQL 설정 (DB 담당자에게 정보 받기)
+# MYSQL_URL=mysql+pymysql://username:password@host:port/database
+
+# 테스트용 SQLite (기본값)
+MYSQL_URL=sqlite:///./test_firebase.db
+```
+
+### MySQL 연동 요구사항
+DB 담당자에게 다음 정보 요청:
+1. **host** (IP 주소 또는 도메인)
+2. **port** (기본 3306)
+3. **username**
+4. **password**
+5. **database** 이름
+
+**중요:** 외부 접속이 허용되어야 함 (localhost만 허용하면 접속 불가)
+
+### Firebase 서비스 계정 키
+1. Firebase Console에서 서비스 계정 키 다운로드
+2. `secrets/firebase-service-account.json` 경로에 저장
+3. `.gitignore`에 `secrets/` 포함되어 Git 추적 제외됨
+
+### 테스트 실행
+```bash
+# DB + Firebase 연동 테스트
+python DeepFake_DB/DB_test.py
+```
+
+성공 시 Firebase Realtime Database의 `/detection_logs`에 데이터가 저장됩니다.
+
+## 11. 최근 업데이트
 
 ### 2025-11-22: 얼굴 랜드마크 추출 기능(v5) 안정화 🎯
 - **구현 파일:** `app/services/landmark.py` (FaceMesh + FaceDetection fallback, ffmpeg 재인코딩)
@@ -190,11 +231,15 @@ streamlit run main.py --server.port 8501
 - **재생 안정화:** ffmpeg H.264 (`libx264`, `+faststart`) 변환 및 실패 시 원본 mp4v 사용
 - **Fallback:** 얼굴 미검출 시 'NO FACE' 또는 박스 표시, 디코딩 실패 시 placeholder 영상 생성
 - **사용 가이드:** `LANDMARK_GUIDE.md` 참고 (세부 설정 및 문제 해결)
-- **삭제/폐기 문서:** `CHANGES_SUMMARY.md`, `VIDEO_PLAYBACK_FIX.md`, `V4_CHANGES.md`, `FINAL_SETUP.md` (역사 기록용이지만 현재 빌드에는 불필요)
+
+### 2025-11-22: Firebase/MySQL 환경 변수 기반 연동
+- **환경 변수:** `.env` 파일 기반 설정 (Git 제외)
+- **Firebase:** 서비스 계정 키 경로 및 RTDB URL 분리
+- **MySQL:** 선택적 연동 (SQLite 기본값)
+- **테스트:** `DeepFake_DB/DB_test.py`로 연동 확인
+- **보안:** `secrets/`, `.env`, `*.json` Git 추적 제외
 
 ### 2025-11-21: YouTube 다운로드 라이브러리 변경
-
-### YouTube 다운로드 라이브러리 변경
 - **이전:** pytube (YouTube API 변경에 취약, 자주 오류 발생)
 - **변경:** yt-dlp (안정적이고 지속적으로 업데이트됨)
 - **영향받는 파일:**
@@ -213,6 +258,8 @@ streamlit run main.py --server.port 8501
 - ✅ 딥페이크 탐지 API 호출 (Form 데이터 전송)
 - ✅ 결과 반환 및 DB 저장
 - ✅ Firebase 로그 기록
+- ✅ SQLite 임시 테스트
+- ✅ 환경 변수 기반 설정
 
 ### 설치 방법
 기존 환경에서 업데이트하려면:
@@ -220,17 +267,18 @@ streamlit run main.py --server.port 8501
 # conda 환경 활성화
 conda activate deepfake_backend_env
 
-# yt-dlp 설치 (pytube 제거)
-pip uninstall pytube -y
-pip install yt-dlp
-
-# 랜드마크 관련 패키지 (필요 시 재설치)
-pip install mediapipe opencv-python numpy==1.24.3
+# 필수 패키지 설치/업데이트
+pip install -r requirements.txt
 
 # 서버 재시작
 uvicorn app.main:app --reload
 ```
 
-### 문서 구성 정리
-- 유지: `README.md`, `INTEGRATION_GUIDE.md`, `LANDMARK_GUIDE.md`
-- 제거(히스토리만 의미): `CHANGES_SUMMARY.md`, `VIDEO_PLAYBACK_FIX.md`, `V4_CHANGES.md`, `FINAL_SETUP.md`
+### 필수 패키지
+- `yt-dlp`: YouTube 다운로드
+- `mediapipe`, `opencv-python`: 랜드마크 추출
+- `numpy==1.24.3`: mediapipe 호환성
+- `firebase-admin`: Firebase RTDB 연동
+- `python-dotenv`: 환경 변수 로드
+- `bcrypt`: 비밀번호 해싱
+- `sqlalchemy`, `pymysql`: DB 연동

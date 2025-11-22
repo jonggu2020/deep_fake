@@ -1,75 +1,85 @@
-import firebase_admin
-from firebase_admin import credentials, db
+"""로컬 통합 테스트 스크립트 (MySQL + Firebase).
+
+환경 변수 사용:
+  MYSQL_URL                → MySQL 연결 문자열
+  FIREBASE_CREDENTIALS     → 서비스 계정 키 경로 (예: secrets/firebase-service-account.json)
+  FIREBASE_DATABASE_URL    → RTDB URL
+  ENABLE_FIREBASE_LOG=1    → Firebase 로그 저장 활성화 플래그
+
+주의: 실제 서비스 계정 키는 Git에 포함하지 말 것.
+"""
+
+import os
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 프로젝트 루트를 sys.path에 추가 (app 모듈 import 가능하게)
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# .env 파일 로드
+load_dotenv(project_root / ".env")
+
 from sqlalchemy import create_engine, text
-from passlib.context import CryptContext
+import bcrypt
+from app.services.firebase_logger import save_detection_log, _initialize_if_possible  # type: ignore
 
-# --- 1. 암호화 설정 ---
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MYSQL_URL = os.getenv("MYSQL_URL", "mysql+pymysql://root:password@localhost/firebase_db_test")
+engine = create_engine(MYSQL_URL)
 
-# --- 2. MySQL 연결 설정 ---
-# (DB 정보는 팀원과 공유된 정보로 변경)
-MYSQL_DATABASE_URL = "mysql+pymysql://root:Sy01252865!!@localhost/firebase_db_tset" 
-engine = create_engine(MYSQL_DATABASE_URL)
 
-# --- 3. Firebase 초기화 ---
-if not firebase_admin._apps:
-    cred_path = ""
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://sw-deepfake-project-default-rtdb.firebaseio.com/'
-    })
-
-# --- 4. (가짜) 회원가입 함수 ---
-def simulate_register(email, password):
-    hashed_password = pwd_context.hash(password)
+def init_db():
+    """테스트용 users 테이블 생성 (SQLite 임시 테스트용)"""
     with engine.connect() as conn:
-        conn.execute(text(
-            "INSERT INTO users (email, hashed_password) VALUES (:email, :hashed_password)"
-        ), {"email": email, "hashed_password": hashed_password})
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                hashed_password VARCHAR(255) NOT NULL
+            )
+        """))
         conn.commit()
-    print(f"✅ (MySQL) 사용자 '{email}' 회원가입 시뮬레이션 성공")
+    print("✅ users 테이블 준비 완료")
 
-# --- 5. (가짜) 로그인 함수 ---
-def simulate_login(email, password):
+
+def simulate_register(email: str, password: str) -> None:
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "SELECT id, hashed_password FROM users WHERE email = :email"
-        ), {"email": email}).first()
-        
-        if result and pwd_context.verify(password, result.hashed_password):
-            print(f"✅ (MySQL) 사용자 '{email}' 로그인 성공. 유저 ID: {result.id}")
-            return result.id  # <-- ★★★ MySQL의 고유 ID 반환
-        else:
-            print(f"❌ (MySQL) 로그인 실패")
-            return None
+        conn.execute(text("INSERT INTO users (email, hashed_password) VALUES (:e, :h)"),
+                     {"e": email, "h": hashed})
+        conn.commit()
+    print(f"✅ (MySQL) 사용자 '{email}' 회원가입 완료")
 
-# --- 6. (핵심) 로그 저장 함수 ---
-def save_detection_log_to_firebase(mysql_user_id, log_data):
-    if mysql_user_id is None:
-        print("로그인 실패. 로그 저장 안 함.")
-        return
 
-    # ★★★ MySQL ID를 Firebase에 저장하여 연동 ★★★
-    log_data['user_id'] = mysql_user_id 
-    
-    ref = db.reference('/detection_logs')
-    new_log_ref = ref.push(log_data)
-    print(f"✅ (Firebase) 탐지 로그 저장 성공! (로그 ID: {new_log_ref.key})")
-    print(f"    (연동된 MySQL User ID: {mysql_user_id})")
+def simulate_login(email: str, password: str):
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id, hashed_password FROM users WHERE email=:e"), {"e": email}).first()
+    if row and bcrypt.checkpw(password.encode('utf-8'), row.hashed_password.encode('utf-8')):
+        print(f"✅ (MySQL) 로그인 성공: {row.id}")
+        return row.id
+    print("❌ (MySQL) 로그인 실패")
+    return None
 
-# --- 7. (실행) 전체 테스트 ---
-print("--- 1. 회원가입 테스트 ---")
-simulate_register("junkyu@test.com", "my_strong_password123")
 
-print("\n--- 2. 로그인 및 로그 저장 테스트 ---")
-logged_in_user_id = simulate_login("junkyu@test.com", "my_strong_password123")
+def test_log_flow():
+    print("--- DB 초기화 ---")
+    init_db()
+    print("--- 회원가입 ---")
+    simulate_register("junkyu@test.com", "my_strong_password123")
+    print("--- 로그인 ---")
+    uid = simulate_login("junkyu@test.com", "my_strong_password123")
+    print("--- Firebase 초기화 ---")
+    _initialize_if_possible()
+    print("--- 로그 저장 ---")
+    save_detection_log(uid, {
+        "status": "completed",
+        "source_type": "file_upload",
+        "model_result": {"prediction": "Deepfake", "confidence": 0.77},
+        "created_at": "2025-11-13T01:10:00Z"
+    })
+    print("Done.")
 
-# 가짜 탐지 결과
-mock_log = {
-    "status": "completed",
-    "source_type": "file_upload",
-    "model_result": {"prediction": "Deepfake", "confidence": 0.77},
-    "created_at": "2025-11-13T01:10:00Z"
-}
 
-save_detection_log_to_firebase(logged_in_user_id, mock_log)
+if __name__ == "__main__":
+    test_log_flow()
