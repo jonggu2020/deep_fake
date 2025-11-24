@@ -6,7 +6,7 @@ from views.detect import render_detect_page
 from views.status import render_status_page
 from services import db
 
-DEFAULT_BASE_URL = "https://c1c6533a39c8.ngrok-free.app"  # 필요에 맞게 수정
+DEFAULT_BASE_URL = "https://cf4402692e38.ngrok-free.app"  # 자동 업데이트됨
 
 # -----------------------------
 # Streamlit 기본 설정

@@ -109,7 +109,40 @@ secrets/firebase-service-account.json
 ```
 
 ## 6. 서버 실행
-### 로컬 테스트 (기본)
+
+### 🚀 원클릭 실행 (권장)
+**가장 쉬운 방법! 터미널 하나로 모든 서버 자동 실행**
+
+#### Windows:
+```bash
+# 방법 1: 배치 파일 더블클릭
+start.bat
+
+# 방법 2: Python 스크립트 실행
+conda activate deepfake_backend_env
+python start.py
+```
+
+**자동으로 실행되는 것:**
+- ✅ FastAPI 백엔드 (http://localhost:8000)
+- ✅ ngrok 터널링 (외부 접속용 HTTPS URL)
+- ✅ Streamlit 프론트엔드 (http://localhost:8501)
+- ✅ ngrok URL 자동 감지 및 Streamlit에 자동 설정
+
+**사용법:**
+1. `start.bat` 더블클릭 또는 `python start.py` 실행
+2. 브라우저에서 http://localhost:8501 자동으로 열림
+3. 끝! ngrok URL이 자동으로 설정되어 있음
+
+**종료:**
+- `Ctrl + C` 누르면 모든 서버 자동 종료
+
+---
+
+### 📝 수동 실행 (개발자용)
+개별 서버를 따로 실행하고 싶을 때:
+
+#### 로컬 테스트 (ngrok 없이)
 ```bash
 # 터미널 1: 백엔드 API 서버
 uvicorn app.main:app --reload
@@ -124,13 +157,13 @@ streamlit run main.py
 - 백엔드 문서: http://localhost:8000/docs
 - 프론트엔드: http://localhost:8501
 
-### 외부 접속 (ngrok 사용)
+#### 외부 접속 (ngrok 사용)
 ```bash
 # 터미널 1: 백엔드
 uvicorn app.main:app --reload --port 8000
 
 # 터미널 2: ngrok으로 백엔드 터널링
-# ngrok 파일 위치로 cd 이동 후 .\ngrok.exe http 8000
+cd C:\ngrok
 .\ngrok http 8000
 # 출력된 URL 복사 (예: https://xxxx-xxxx.ngrok-free.app)
 
@@ -139,9 +172,9 @@ cd deepfake_web
 streamlit run main.py --server.port 8501
 ```
 
-**프론트엔드 사용법:**
+**프론트엔드 수동 설정:**
 1. 브라우저에서 http://localhost:8501 접속
-2. 왼쪽 사이드바 "Backend Base URL"에 ngrok URL 입력
+2. 왼쪽 사이드바 "Backend Base URL"에 ngrok URL 수동 입력
 3. Auth 메뉴에서 회원가입/로그인
 4. Detect 메뉴에서 영상 업로드 또는 YouTube 링크 입력
 
@@ -221,19 +254,21 @@ python DeepFake_DB/DB_test.py
 
 ## 11. 최근 업데이트
 
-### 2025-11-22: 얼굴 랜드마크 추출 기능(v5) 안정화 🎯
-- **구현 파일:** `app/services/landmark.py` (FaceMesh + FaceDetection fallback, ffmpeg 재인코딩)
-- **응답 필드:** `landmark_video_path` (정적 `/uploads` 경로)
-- **처리 범위:** 앞부분 최대 3초 프레임만 빠르게 분석 후 그린 결과 영상 생성
-- **재생 안정화:** ffmpeg H.264 (`libx264`, `+faststart`) 변환 및 실패 시 원본 mp4v 사용
-- **Fallback:** 얼굴 미검출 시 'NO FACE' 또는 박스 표시, 디코딩 실패 시 placeholder 영상 생성
-- **사용 가이드:** `LANDMARK_GUIDE.md` 참고 (세부 설정 및 문제 해결)
+### 2025-11-24: 원클릭 통합 실행 스크립트 추가 🎯
+- **파일:** `start.py`, `start.bat`
+- **기능:** uvicorn + ngrok + streamlit 한 번에 실행
+- **자동화:** ngrok URL 자동 감지 및 Streamlit 설정 자동 업데이트
+- **사용법:** `start.bat` 더블클릭 또는 `python start.py`
+- **종료:** `Ctrl+C`로 모든 서버 자동 종료
+- **장점:** 터미널 3개 + 수동 URL 복붙 불필요
 
 ### 2025-11-24: MySQL 실제 서버 연동 완료
 - **DB 서버:** 준규 MySQL 서버 (172.30.1.60:3306)
 - **연결 정보:** `.env` 파일에 `MYSQL_URL` 설정
 - **테스트:** `DeepFake_DB/DB_test.py`로 연동 확인
 - **Fallback:** MySQL 연결 실패 시 SQLite 사용 가능
+
+### 2025-11-22: 얼굴 랜드마크 추출 기능(v5) 안정화 🎯
 
 ### 2025-11-22: Firebase/MySQL 환경 변수 기반 연동
 - **환경 변수:** `.env` 파일 기반 설정 (Git 제외)
