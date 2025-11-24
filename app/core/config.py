@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     class Config:
         # .env 파일에서 환경변수를 읽어오겠다는 의미
         env_file = ".env"
+        # .env에 추가 필드가 있어도 허용 (firebase_logger.py 등에서 직접 사용)
+        extra = "ignore"
 
 
 # settings 객체를 import 해서 어디서든 설정값을 사용할 수 있다.

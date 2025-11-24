@@ -1,7 +1,8 @@
 # services/backend_api.py
 import requests
 
-TIMEOUT = 60
+# 영상 다운로드 + 랜드마크 추출 등 오래 걸리는 작업 대비
+TIMEOUT = 300  # 5분
 
 
 def post_signup(base_url: str, username: str, password: str, email: str | None = None):

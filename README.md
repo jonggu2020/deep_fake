@@ -192,22 +192,19 @@ FIREBASE_CREDENTIALS=secrets/firebase-service-account.json
 FIREBASE_DATABASE_URL=https://sw-deepfake-project-default-rtdb.firebaseio.com/
 ENABLE_FIREBASE_LOG=1
 
-# MySQL 설정 (DB 담당자에게 정보 받기)
-# MYSQL_URL=mysql+pymysql://username:password@host:port/database
+# MySQL 설정 (준규 DB 서버 연동)
+MYSQL_URL=mysql+pymysql://root:PASSWORD@172.30.1.60:3306/firebase_db_tset
 
-# 테스트용 SQLite (기본값)
-MYSQL_URL=sqlite:///./test_firebase.db
+# 로컬 테스트용 SQLite (MySQL 연결 안 될 때)
+# MYSQL_URL=sqlite:///./test_firebase.db
 ```
 
-### MySQL 연동 요구사항
-DB 담당자에게 다음 정보 요청:
-1. **host** (IP 주소 또는 도메인)
-2. **port** (기본 3306)
-3. **username**
-4. **password**
-5. **database** 이름
-
-**중요:** 외부 접속이 허용되어야 함 (localhost만 허용하면 접속 불가)
+### MySQL 연동 정보
+- **Host:** 172.30.1.60 (준규 DB 서버 외부 IP)
+- **Port:** 3306
+- **User:** root
+- **Database:** firebase_db_tset
+- **주의:** 외부 접속 허용됨, 로컬 테스트 시 localhost 대신 172.30.1.60 사용 가능
 
 ### Firebase 서비스 계정 키
 1. Firebase Console에서 서비스 계정 키 다운로드
@@ -232,10 +229,16 @@ python DeepFake_DB/DB_test.py
 - **Fallback:** 얼굴 미검출 시 'NO FACE' 또는 박스 표시, 디코딩 실패 시 placeholder 영상 생성
 - **사용 가이드:** `LANDMARK_GUIDE.md` 참고 (세부 설정 및 문제 해결)
 
+### 2025-11-24: MySQL 실제 서버 연동 완료
+- **DB 서버:** 준규 MySQL 서버 (172.30.1.60:3306)
+- **연결 정보:** `.env` 파일에 `MYSQL_URL` 설정
+- **테스트:** `DeepFake_DB/DB_test.py`로 연동 확인
+- **Fallback:** MySQL 연결 실패 시 SQLite 사용 가능
+
 ### 2025-11-22: Firebase/MySQL 환경 변수 기반 연동
 - **환경 변수:** `.env` 파일 기반 설정 (Git 제외)
 - **Firebase:** 서비스 계정 키 경로 및 RTDB URL 분리
-- **MySQL:** 선택적 연동 (SQLite 기본값)
+- **MySQL:** 선택적 연동 (기본값 SQLite → 준규 서버로 변경)
 - **테스트:** `DeepFake_DB/DB_test.py`로 연동 확인
 - **보안:** `secrets/`, `.env`, `*.json` Git 추적 제외
 
