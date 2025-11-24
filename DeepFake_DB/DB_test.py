@@ -30,26 +30,44 @@ engine = create_engine(MYSQL_URL)
 
 
 def init_db():
-    """테스트용 users 테이블 생성 (SQLite 임시 테스트용)"""
+    """테스트용 users 테이블 생성 (SQLite / MySQL 호환)"""
+    create_sql = None
+    if "mysql" in MYSQL_URL:
+        # MySQL 문법
+        create_sql = """
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            hashed_password VARCHAR(255) NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    else:
+        # SQLite 문법
+        create_sql = """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            hashed_password VARCHAR(255) NOT NULL
+        )
+        """
     with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                hashed_password VARCHAR(255) NOT NULL
-            )
-        """))
+        conn.execute(text(create_sql))
         conn.commit()
     print("✅ users 테이블 준비 완료")
 
 
 def simulate_register(email: str, password: str) -> None:
+    """중복 이메일 있으면 삭제 후 새로 등록 (개발 편의용)."""
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     with engine.connect() as conn:
+        # 기존 동일 이메일 제거 (중복 방지)
+        conn.execute(text("DELETE FROM users WHERE email=:e"), {"e": email})
         conn.execute(text("INSERT INTO users (email, hashed_password) VALUES (:e, :h)"),
                      {"e": email, "h": hashed})
+        # 새로 등록된 사용자 id 확인
+        row = conn.execute(text("SELECT id FROM users WHERE email=:e"), {"e": email}).first()
         conn.commit()
-    print(f"✅ (MySQL) 사용자 '{email}' 회원가입 완료")
+    print(f"✅ (MySQL) 사용자 '{email}' 회원가입 완료 id={row.id if row else 'UNKNOWN'}")
 
 
 def simulate_login(email: str, password: str):
@@ -72,12 +90,17 @@ def test_log_flow():
     print("--- Firebase 초기화 ---")
     _initialize_if_possible()
     print("--- 로그 저장 ---")
-    save_detection_log(uid, {
+    log_payload = {
         "status": "completed",
         "source_type": "file_upload",
         "model_result": {"prediction": "Deepfake", "confidence": 0.77},
         "created_at": "2025-11-13T01:10:00Z"
-    })
+    }
+    key = save_detection_log(uid, log_payload)
+    if key:
+        print(f"✅ Firebase 저장 완료 key={key}")
+    else:
+        print("⚠️ Firebase 저장 실패 또는 비활성")
     print("Done.")
 
 
