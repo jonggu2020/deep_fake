@@ -25,11 +25,10 @@ def render_auth_page(base_url: str):
     # -------------------------
     with tab_signup:
         st.subheader("POST /auth/signup  - 회원가입")
-        st.caption("백엔드 스키마에 맞게 필드명을 수정해서 사용하세요.")
+        st.caption("이메일과 비밀번호로 회원가입합니다.")
 
         with st.form("signup_form"):
-            username = st.text_input("username")
-            email = st.text_input("email (옵션)")
+            email = st.text_input("email")
             password = st.text_input("password", type="password")
 
             submitted = st.form_submit_button("회원가입 요청 보내기")
@@ -38,9 +37,8 @@ def render_auth_page(base_url: str):
             try:
                 resp = backend_api.post_signup(
                     base_url=base_url,
-                    username=username,
+                    email=email,
                     password=password,
-                    email=email or None,
                 )
                 _show_response(resp)
             except Exception as e:
@@ -51,10 +49,10 @@ def render_auth_page(base_url: str):
     # -------------------------
     with tab_login:
         st.subheader("POST /auth/login  - 로그인")
-        st.caption("응답에서 access_token 필드가 있다고 가정합니다.")
+        st.caption("이메일과 비밀번호로 로그인합니다.")
 
         with st.form("login_form"):
-            username = st.text_input("username", key="login_username")
+            email = st.text_input("email", key="login_email")
             password = st.text_input("password", type="password", key="login_password")
             submitted = st.form_submit_button("로그인 요청 보내기")
 
@@ -62,19 +60,14 @@ def render_auth_page(base_url: str):
             try:
                 resp = backend_api.post_login(
                     base_url=base_url,
-                    username=username,
+                    email=email,
                     password=password,
                 )
                 _show_response(resp)
 
                 if resp.status_code == 200:
                     data = resp.json()
-                    token = data.get("access_token") or data.get("token")
-                    if token:
-                        st.session_state.access_token = token
-                        st.session_state.username = username
-                        st.success("로그인 성공, 토큰 세션에 저장됨.")
-                    else:
-                        st.warning("응답에서 access_token을 찾지 못했습니다. 필드명을 확인하세요.")
+                    st.session_state.user_email = email
+                    st.success("로그인 성공!")
             except Exception as e:
                 st.error(f"요청 실패: {e}")

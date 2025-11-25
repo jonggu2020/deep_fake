@@ -4,10 +4,35 @@
 - 여기서 라우터 등록, CORS 설정, DB 테이블 생성 등을 한 번에 수행한다.
 """
 
+# 1. 환경변수 먼저 로드 (모든 import보다 먼저)
+import sys
+from dotenv import load_dotenv
+from pathlib import Path
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+print(f"✅ [main.py] .env 로드: {env_path}", file=sys.stderr, flush=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+# 2. Firebase 먼저 초기화 (database.py보다 먼저 - auth.py에서 사용)
+from app.services import firebase_logger
+
+# Firebase 명시적 초기화 호출
+firebase_logger._initialize_if_possible()
+
+# Firebase 초기화 확인
+try:
+    import firebase_admin
+    if firebase_admin._apps:
+        print(f"✅ [main.py] Firebase 초기화 완료!", file=sys.stderr, flush=True)
+    else:
+        print(f"⚠️  [main.py] Firebase 초기화 실패 - auth.py에서 사용자 저장 안됨", file=sys.stderr, flush=True)
+except:
+    print(f"⚠️  [main.py] Firebase 초기화 확인 실패", file=sys.stderr, flush=True)
+
+# 3. Database 연결 및 테이블 생성
 from app.database import Base, engine
 from app.routers import auth, detect
 

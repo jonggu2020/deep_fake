@@ -19,6 +19,7 @@ v5 개선 사항:
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict, Optional
 
 try:
@@ -37,42 +38,47 @@ def _initialize_if_possible() -> None:
     """환경변수를 바탕으로 Firebase 초기화.
 
     조건:
-    - ENABLE_FIREBASE_LOG == '1'
     - FIREBASE_CREDENTIALS 파일 존재
     - firebase_admin 설치됨
     이미 초기화된 경우 재실행하지 않는다.
+    
+    ⚠️ ENABLE_FIREBASE_LOG 조건 제거: auth.py에서도 Firebase 사용해야 하므로 항상 초기화
     """
     global _firebase_ready
-    if _firebase_ready or firebase_admin is None:
-        print(f"[Firebase Debug] _firebase_ready={_firebase_ready}, firebase_admin={firebase_admin}")
+    if _firebase_ready:
         return
-
-    enable_log = _get_env("ENABLE_FIREBASE_LOG")
-    print(f"[Firebase Debug] ENABLE_FIREBASE_LOG={enable_log}")
-    if enable_log != "1":
+    
+    if firebase_admin is None:
+        print("❌ firebase_admin 패키지 미설치 → Firebase 비활성화", file=sys.stderr, flush=True)
         return
 
     cred_path = _get_env("FIREBASE_CREDENTIALS")
     db_url = _get_env("FIREBASE_DATABASE_URL", "https://sw-deepfake-project-default-rtdb.firebaseio.com/")
-    print(f"[Firebase Debug] cred_path={cred_path}, exists={os.path.exists(cred_path) if cred_path else False}")
-    print(f"[Firebase Debug] db_url={db_url}")
-    if not cred_path or not os.path.exists(cred_path):
-        print("[Firebase Debug] Credential file not found or path is None")
+    
+    if not cred_path:
+        print(f"⚠️  FIREBASE_CREDENTIALS 환경변수 없음 → Firebase 비활성화", file=sys.stderr, flush=True)
         return
+    
+    if not os.path.exists(cred_path):
+        print(f"❌ Firebase 인증 파일 없음: {cred_path}", file=sys.stderr, flush=True)
+        return
+    
     try:
         if not firebase_admin._apps:  # type: ignore[attr-defined]
             cred = credentials.Certificate(cred_path)  # type: ignore
             firebase_admin.initialize_app(cred, {"databaseURL": db_url})  # type: ignore
         _firebase_ready = True
+        print(f"✅ Firebase 초기화 성공: {db_url}", file=sys.stderr, flush=True)
+        
         # 선택적: 초기 로그 전체 삭제 (개발 단계) 환경변수 CLEAR_FIREBASE_LOGS=1
         if _get_env("CLEAR_FIREBASE_LOGS") == "1":
             try:
                 db.reference("/detection_logs").delete()  # type: ignore
                 print("[Firebase] 기존 detection_logs 전체 삭제 완료")
             except Exception as e:
-                print(f"[Firebase clear failed] {e}")
-    except Exception as e:  # 초기화 실패 시 무시
-        print(f"[Firebase init failed] {e}")
+                print(f"[Firebase clear failed] {e}", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"❌ Firebase 초기화 실패: {e}", file=sys.stderr, flush=True)
         _firebase_ready = False
 
 

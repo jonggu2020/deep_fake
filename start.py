@@ -19,6 +19,37 @@ NGROK_PATH = r"C:\ngrok\ngrok.exe"
 BACKEND_PORT = 8000
 FRONTEND_PORT = 8501
 
+def cleanup_ports():
+    """사용 중인 포트 자동 정리"""
+    if os.name != 'nt':
+        return
+    
+    ports = [BACKEND_PORT, FRONTEND_PORT, 4040]
+    print("🔧 포트 정리 중...")
+    
+    for port in ports:
+        try:
+            result = subprocess.run(
+                f'netstat -ano | findstr ":{port}"',
+                shell=True,
+                capture_output=True,
+                text=True
+            )
+            
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if parts and parts[-1].isdigit():
+                    pid = parts[-1]
+                    if pid != '0':
+                        subprocess.run(f'taskkill /F /PID {pid}', 
+                                     shell=True, 
+                                     stdout=subprocess.DEVNULL, 
+                                     stderr=subprocess.DEVNULL)
+        except:
+            pass
+    
+    print("✅ 포트 정리 완료\n")
+
 def get_ngrok_url(max_retries=10, delay=2):
     """ngrok API로 현재 터널 URL 가져오기"""
     for i in range(max_retries):
@@ -71,6 +102,9 @@ def main():
     print("=" * 60)
     print("🚀 Deepfake Detection 통합 실행 스크립트")
     print("=" * 60)
+    
+    # 포트 자동 정리
+    cleanup_ports()
     
     processes = []
     current_dir = Path(__file__).parent.absolute()

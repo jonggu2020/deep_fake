@@ -5,17 +5,15 @@ import requests
 TIMEOUT = 300  # 5분
 
 
-def post_signup(base_url: str, username: str, password: str, email: str | None = None):
+def post_signup(base_url: str, email: str, password: str):
     url = base_url.rstrip("/") + "/auth/signup"
-    payload = {"username": username, "password": password}
-    if email:
-        payload["email"] = email
+    payload = {"email": email, "password": password}
     return requests.post(url, json=payload, timeout=TIMEOUT)
 
 
-def post_login(base_url: str, username: str, password: str):
+def post_login(base_url: str, email: str, password: str):
     url = base_url.rstrip("/") + "/auth/login"
-    payload = {"username": username, "password": password}
+    payload = {"email": email, "password": password}
     return requests.post(url, json=payload, timeout=TIMEOUT)
 
 

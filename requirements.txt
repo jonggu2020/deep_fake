@@ -5,6 +5,7 @@ pymysql
 python-multipart
 pydantic[email]
 pydantic-settings
+bcrypt==4.0.1
 passlib[bcrypt]
 yt-dlp
 firebase-admin

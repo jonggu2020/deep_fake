@@ -1,45 +1,56 @@
 """DB 연결 및 세션, Base 클래스 정의 파일.
 
-❗ 현재 단계에서는 MySQL 서버가 준비되지 않았기 때문에,
-개발 편의를 위해 **SQLite 파일 DB**를 사용한다.
-
-- 추후 MySQL로 전환할 때는 이 파일만 수정하면 된다.
-- 그 외 models, routers, services 코드는 그대로 재사용 가능하도록 구성한다.
+MySQL을 기본으로 사용하며, 환경변수 로딩 순서 문제를 해결했습니다.
 """
 
 import os
+import sys
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from app.core.config import settings
 
-# SQLite 파일 DB 경로 (프로젝트 루트 기준)
-# 예) deepfake_backend_commented/deepfake.db 파일이 생성된다.
-MYSQL_URL_ENV = os.getenv("MYSQL_URL")
-DATABASE_URL = MYSQL_URL_ENV if MYSQL_URL_ENV else "sqlite:///./deepfake.db"
+# 🔥 중요: database.py가 import될 때 .env를 확실하게 로드
+from dotenv import load_dotenv
 
-# SQLite에서만 필요한 옵션(check_same_thread=False)
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False},
-    )
+# 프로젝트 루트의 .env 파일 경로 (절대 경로)
+PROJECT_ROOT = Path(__file__).parent.parent
+ENV_FILE = PROJECT_ROOT / ".env"
+
+# .env 파일 강제 로드 (override=True로 기존 환경변수도 덮어씀)
+if ENV_FILE.exists():
+    load_dotenv(dotenv_path=ENV_FILE, override=True)
+    print(f"✅ .env 파일 로드: {ENV_FILE}", file=sys.stderr, flush=True)
 else:
-    engine = create_engine(DATABASE_URL)
+    print(f"⚠️  .env 파일 없음: {ENV_FILE}", file=sys.stderr, flush=True)
 
-# DB 세션을 만들어 주는 공장(factory) 같은 것
+# MySQL URL 가져오기
+MYSQL_URL = os.getenv("MYSQL_URL")
+
+if not MYSQL_URL:
+    error_msg = "❌ CRITICAL: MYSQL_URL 환경변수가 없습니다! .env 파일을 확인하세요."
+    print(error_msg, file=sys.stderr, flush=True)
+    raise RuntimeError(error_msg)
+
+DATABASE_URL = MYSQL_URL
+print(f"🔌 MySQL 연결: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else '(연결 정보 숨김)'}", file=sys.stderr, flush=True)
+
+# 엔진 생성 (MySQL 전용 - SQLite fallback 제거)
+# 엔진 생성 (MySQL 전용 - SQLite fallback 제거)
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True  # MySQL 연결 끊김 방지
+)
+
+# 세션 팩토리
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 모든 모델(BaseModel 아님)에 상속해줄 SQLAlchemy Base 클래스
+# SQLAlchemy Base 클래스
 Base = declarative_base()
 
 
 def get_db():
-    """FastAPI 의 dependency로 사용하는 DB 세션 제공 함수.
-
-    - 요청이 들어올 때마다 SessionLocal()로 세션을 하나 생성하고
-    - 요청 처리가 끝나면 finally에서 세션을 닫는다.
-    - routers 파일에서 Depends(get_db) 형태로 사용한다.
-    """
+    """FastAPI dependency로 사용하는 DB 세션 제공 함수."""
     db = SessionLocal()
     try:
         yield db
