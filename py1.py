@@ -12,7 +12,7 @@ import time
 # (이전의 '침묵' 이미지의 Std 값을 참고하여 40.0 ~ 60.0 사이로 설정하세요)ㅁ
 SUSPICIOUS_THRESHOLD = 45.0 
 
-# ⚠️ [수정필요 1]
+# ⚠️ [수정필요 1]y
 # 현재 정제된 CSV 파일 (v9 스크립트로 생성한 최신 CSV)
 # 예: "./master_summary_v11_cleaned_final.csv"
 CLEANED_CSV_FILE = "./master_summary_v11_cleaned_final.csv" 
@@ -121,4 +121,5 @@ if __name__ == "__main__":
     end_time = time.time()
 
     print(f"총 소요 시간: {end_time - start_time:.2f}초")
+
 
