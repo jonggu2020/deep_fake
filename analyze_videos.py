@@ -157,7 +157,7 @@ def plot_video_distributions(df):
     print(f"차트가 '{save_path}' 파일로 저장되었습니다.")
 
 
-# --- 메인 코드 실행 ---
+# --- 메인 코드 실행 ---t
 if __name__ == "__main__":
     
     # 0. 한글 폰트 설정
