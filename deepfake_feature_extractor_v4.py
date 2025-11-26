@@ -10,7 +10,7 @@ import os
 import time
 from scipy.spatial import distance as dist
 
-# ============================================================
+# ============================================================g
 # 1. 사용자 설정 (필수)
 # ============================================================
 DLIB_PREDICTOR_PATH = "shape_predictor_68_face_landmarks.dat"
@@ -447,5 +447,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
