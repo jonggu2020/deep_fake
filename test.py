@@ -4,7 +4,7 @@ import os
 import time
 
 # 1. 팀원들의 CSV 파일이 모여있는 폴더 경로
-# (예: 이 스크립트와 같은 위치에 'all_csvs'라는 폴더를 만드세요)
+# (예: 이 스크립트와 같은 위치에 'all_csvs'라는 폴더를 만드세요)y
 CSV_SOURCE_DIR = "./data" 
 
 # 2. 통합된 마스터 CSV 파일을 저장할 경로와 이름ㄴ
@@ -75,4 +75,5 @@ if __name__ == "__main__":
     else:
 
         merge_csv_files(CSV_SOURCE_DIR, OUTPUT_MASTER_CSV)
+
 
