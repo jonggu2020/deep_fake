@@ -5,7 +5,7 @@ import os
 import time
 import warnings
 
-# Matplotlib에서 수많은 플롯을 생성할 때 발생하는 경고를 억제합니다.
+# Matplotlib에서 수많은 플롯을 생성할 때 발생하는 경고를 억제합니다.7
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib.pyplot')
 
 # --- 1. 사용자 설정 ---
@@ -174,4 +174,5 @@ if __name__ == "__main__":
     # 스크립트 실행
 
     analyze_distributions(csv_file=MERGED_CSV_FILE, plot_dir=OUTPUT_PLOT_DIR)
+
 
