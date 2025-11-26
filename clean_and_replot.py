@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import sys
 
-# ==========================================
+# ==========================================t
 # [설정 영역] 아래 경로를 실제 환경에 맞게 수정하세요.
 # ==========================================
 CSV_FILE_PATH = 'master_summary_v11_cleaned_final.csv'      # video_id가 포함된 CSV 파일 경로ㅁ
@@ -79,6 +79,7 @@ if __name__ == "__main__":
         delete_unmatched_files()
     else:
         print("작업이 취소되었습니다.")
+
 
 
 
