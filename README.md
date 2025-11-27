@@ -9,3 +9,4 @@ LSTM + CNN = 2번
 XGBoost + LSTM = 1번
 LSTM + CNN = 2번
 
+1
