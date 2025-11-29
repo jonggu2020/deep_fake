@@ -14,7 +14,7 @@ from scipy.spatial import distance as dist
 # 1. 사용자 설정 (필수)
 # ============================================================
 DLIB_PREDICTOR_PATH = "shape_predictor_68_face_landmarks.dat"
-VIDEO_SOURCE_DIR = "../test" # ⚠️ [수정필요] 원본 비디오 폴더ㄴ
+VIDEO_SOURCE_DIR = "../test" # ⚠️ [수정필요] 원본 비디오 폴더ㄴs
 OUTPUT_DIR = "../output"       # ⚠️ [수정필요] 결과물 저장 폴더ㅇ
 
 VAD_TARGET_DURATION = 3.0 # 우리가 원하는 조각의 길이 (초)3
@@ -447,6 +447,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
