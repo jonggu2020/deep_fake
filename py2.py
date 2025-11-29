@@ -4,7 +4,7 @@ from PIL import Image, ImageTk # (pip install Pillow)
 import os
 import pandas as pd
 
-# --- 1. 사용자 설정 ---g
+# --- 1. 사용자 설정 ---gs
 
 # ⚠️ [수정필요 1]
 # 1차 필터링 스크립트가 생성한 '의심' 목록 텍스트 파일
@@ -242,6 +242,7 @@ if __name__ == "__main__":
         app = ImageReviewer(root)
 
         root.mainloop()
+
 
 
 
