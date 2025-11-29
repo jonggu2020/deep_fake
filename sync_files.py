@@ -6,7 +6,7 @@ import time
 # --- 1. 사용자 설정 ---
 
 # ⚠️ [수정필요 1]
-# 최종 정제된 "기준" CSV 파일 경로
+# 최종 정제된 "기준" CSV 파일 경로s
 # (v9 스크립트를 실행했다면 'master_summary_v11_cleaned_final.csv'가 맞습니다)ㄴy1
 CLEANED_CSV_FILE = "./master_summary_v11_cleaned_final.csv" 
 
@@ -148,6 +148,7 @@ if __name__ == "__main__":
     else:
 
         print("\n❌ 기준 CSV 파일 로드에 실패하여 동기화 작업을 시작할 수 없습니다.")
+
 
 
 
