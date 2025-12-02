@@ -11,7 +11,7 @@ import pandas as pd
 SUSPECT_LIST_FILE = "./suspect_list.txt" 
 
 # ⚠️ [수정필요 2]
-# 원본 CSV 파일 (v9 스크립트로 생성한 최신 CSV)ㄴ
+# 원본 CSV 파일 (v9 스크립트로 생성한 최신 CSV)ㄴㄴ
 # 예: "./master_summary_v11_cleaned_final.csv"ㄴ4
 ORIGINAL_CSV_FILE = "./master_summary_v11_cleaned_final.csv" 
 
@@ -242,6 +242,7 @@ if __name__ == "__main__":
         app = ImageReviewer(root)
 
         root.mainloop()
+
 
 
 
