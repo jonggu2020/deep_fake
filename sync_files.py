@@ -11,7 +11,7 @@ import time
 CLEANED_CSV_FILE = "./master_summary_v11_cleaned_final.csv" 
 
 # ⚠️ [수정필요 2]
-# 정리할 NPY 파일이 있는 폴더 경로
+# 정리할 NPY 파일이 있는 폴더 경로ㄴ
 NPY_DIR = "./2_npy_timeseries"
 
 # ⚠️ [수정필요 3]
@@ -148,6 +148,7 @@ if __name__ == "__main__":
     else:
 
         print("\n❌ 기준 CSV 파일 로드에 실패하여 동기화 작업을 시작할 수 없습니다.")
+
 
 
 
