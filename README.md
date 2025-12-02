@@ -1,7 +1,7 @@
 # deep_fake
 
 
-고화질 버전
+고화질 버전1
 XGBoost + LSTM = 1번
 LSTM + CNN = 2번
 
