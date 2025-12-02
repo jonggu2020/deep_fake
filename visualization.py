@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib.pyplo
 # 파일의 정확한 경로를 지정하세요.d
 MERGED_CSV_FILE = "./master_summary_v1_standard.csv" 
 
-# ⚠️ 모든 그래프가 저장될 폴더 이름ㄴ
+# ⚠️ 모든 그래프가 저장될 폴더 이름ㄴㄴ
 OUTPUT_PLOT_DIR = "./distribution_plots"
 
 # ---
@@ -174,6 +174,7 @@ if __name__ == "__main__":
     # 스크립트 실행
 
     analyze_distributions(csv_file=MERGED_CSV_FILE, plot_dir=OUTPUT_PLOT_DIR)
+
 
 
 
