@@ -11,3 +11,5 @@ DEEPFAKEdeepfake
 klingAI
 
 Haliuo
+
+Vidu
