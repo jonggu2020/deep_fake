@@ -13,3 +13,5 @@ klingAI
 Haliuo
 
 Vidu
+
+Gemini PRO
