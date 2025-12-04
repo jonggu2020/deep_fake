@@ -1,10 +1,8 @@
 """딥페이크 탐지 관련 라우터.
 
 - /detect/upload : 파일 업로드를 통한 분석
-- /detect/youtube : 유튜브 링크를 통한 분석
-
-현재는 inference.py에서 랜덤으로 결과를 돌려주지만,
-나중에 실제 모델이 완성되면 inference.py만 교체해서 쓸 수 있도록 설계했다.
+- /detect/youtube : 유튜브 링크를 통한 분석 (JSON 형식)
+- /detect/jonggu-model : 종구님 모델을 사용한 분석
 """
 
 from pathlib import Path
@@ -13,6 +11,7 @@ import tempfile
 
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -29,6 +28,17 @@ router = APIRouter(prefix="/detect", tags=["detect"])
 # 업로드된 파일들이 저장될 디렉토리
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ============================================================
+# 요청/응답 스키마
+# ============================================================
+
+class YouTubeDetectRequest(BaseModel):
+    """YouTube 링크 분석 요청 스키마"""
+    url: str
+    user_id: Optional[int] = None
+    sensitivity_k: Optional[float] = 2.0
 
 
 @router.post("/upload", response_model=DetectResult)
@@ -129,102 +139,71 @@ async def detect_from_upload(
     )
 
 
-@router.post("/youtube", response_model=DetectResult)
+@router.post("/youtube")
 def detect_from_youtube(
-    url: str = Form(...),
-    user_id: Optional[int] = Form(default=None),
+    request: YouTubeDetectRequest,
     db: Session = Depends(get_db),
 ):
     """유튜브 영상 링크로 딥페이크 여부를 분석하는 엔드포인트.
 
     요청:
-        - form 데이터로 url, 선택적으로 user_id를 받는다.
+        - JSON 형식으로 url, 선택적으로 user_id, sensitivity_k를 받는다.
+        - {
+            "url": "https://www.youtube.com/watch?v=...",
+            "user_id": 1,
+            "sensitivity_k": 2.0
+          }
 
     동작:
-        1) url에 해당하는 유튜브 영상을 downloads/uploads 폴더에 mp4로 저장
+        1) url에 해당하는 유튜브 영상을 다운로드
         2) Video 레코드를 DB에 추가
-        3) 랜드마크 추출 영상 생성
-        4) inference.run_inference_on_video() 호출
-        5) 결과를 DB에 업데이트 후 DetectResult 형태로 반환
+        3) 종구님 모델을 사용하여 분석
+        4) 결과를 반환
     """
     try:
         # 1) 유튜브 영상 다운로드
-        file_path = download_youtube_video(url)
+        file_path = download_youtube_video(request.url)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Youtube download failed: {e}")
 
     # 2) DB에 영상 기록 생성
     video = Video(
-        user_id=user_id,
+        user_id=request.user_id,
         source_type="youtube",
-        source_url=url,
+        source_url=request.url,
         file_path=file_path,
     )
     db.add(video)
     db.commit()
     db.refresh(video)
 
-    # 3) 랜드마크 추출 영상 생성
-    landmark_result = None
+    # 3) 종구님 모델로 분석
     try:
-        print(f"🎯 랜드마크 추출 시작: {file_path}")
-        landmark_result = create_landmark_video(
-            input_path=file_path,
-            output_dir="uploads/landmarks",
-            max_processing_time=3.0
-        )
+        import asyncio
+        result = asyncio.run(detect_deepfake_from_file(
+            file_path, 
+            sensitivity_k=request.sensitivity_k,
+            use_audio=True
+        ))
         
-        if landmark_result["success"]:
-            video.landmark_video_path = landmark_result["output_path"]
-            print(f"✅ 랜드마크 영상 생성 완료: {landmark_result['output_path']}")
-            print(f"   - 처리 시간: {landmark_result['processing_time']}초")
-            print(f"   - 처리 프레임: {landmark_result['processed_frames']}/{landmark_result['total_frames']}")
-        else:
-            print(f"⚠️  랜드마크 추출 실패: {landmark_result.get('error', 'Unknown error')}")
-    except Exception as e:
-        print(f"❌ 랜드마크 추출 중 오류: {str(e)}")
-        landmark_result = {"success": False, "error": str(e)}
-
-    # 4) 딥페이크 탐지 수행 (현재는 랜덤)
-    is_deepfake, confidence = run_inference_on_video(file_path)
-
-    # 5) 결과를 DB에 저장
-    video.is_deepfake = is_deepfake
-    video.confidence = confidence
-    db.commit()
-    db.refresh(video)
-
-    # Firebase 로그 저장 (가능한 경우만)
-    try:
-        log_data = {
-            "status": "completed",
-            "source_type": video.source_type,
-            "model_result": {
-                "prediction": "Deepfake" if is_deepfake else "Real",
-                "confidence": confidence,
-            },
-            "created_at": video.created_at.isoformat(),
+        # DB에 결과 저장
+        video.is_deepfake = result.get("is_fake", False)
+        video.confidence = result.get("fake_probability", 0.0) / 100.0
+        db.commit()
+        
+        # 응답 반환
+        return {
             "video_id": video.id,
-            "file_path": video.file_path,
-            "source_url": video.source_url,
+            "fake_probability": result.get("fake_probability", 0.0),
+            "is_fake": result.get("is_fake", False),
+            "input_sharpness": result.get("input_sharpness", 0.0),
+            "scores": result.get("scores", {}),
+            "message": "YouTube video analysis completed"
         }
-        if video.landmark_video_path:
-            log_data["landmark_video_path"] = video.landmark_video_path
-        save_detection_log(video.user_id, log_data)
-    except Exception:
-        pass
-
-    return DetectResult(
-        video_id=video.id,
-        is_deepfake=is_deepfake,
-        confidence=confidence,
-        landmark_video_path=video.landmark_video_path,
-        landmark_info={
-            "processing_time": landmark_result.get("processing_time") if landmark_result else None,
-            "processed_frames": landmark_result.get("processed_frames") if landmark_result else None,
-            "faces_detected": landmark_result.get("faces_detected") if landmark_result else None,
-        } if landmark_result and landmark_result.get("success") else None
-    )
+    
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Analysis failed: {str(e)}")
 
 
 @router.get("/landmark/{video_id}")

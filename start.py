@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-통합 실행 스크립트
-- uvicorn 백엔드 서버
-- ngrok 터널링  
-- streamlit 프론트엔드
-한 번에 모두 실행하고 ngrok URL을 자동으로 설정합니다.
+종구님 딥페이크 탐지 Streamlit 앱 + FastAPI 백엔드 + ngrok 통합 실행 스크립트
+
+실행 구성:
+- uvicorn 백엔드 서버 (8000)
+- ngrok 터널링 (백엔드 외부 공개)
+- Streamlit 프론트엔드 - 종구님 앱 (8502)
 """
 
 import subprocess
@@ -17,7 +18,7 @@ from pathlib import Path
 # ngrok 실행 파일 경로
 NGROK_PATH = r"C:\ngrok\ngrok.exe"
 BACKEND_PORT = 8000
-FRONTEND_PORT = 8501
+FRONTEND_PORT = 8502  # 종구님 앱
 
 def cleanup_ports():
     """사용 중인 포트 자동 정리"""
@@ -72,32 +73,6 @@ def get_ngrok_url(max_retries=10, delay=2):
     print("⚠️  ngrok URL을 자동으로 가져올 수 없습니다.")
     return None
 
-def update_streamlit_default_url(ngrok_url):
-    """Streamlit main.py의 DEFAULT_BASE_URL 자동 업데이트"""
-    try:
-        # 한글 경로 처리를 위해 절대 경로 사용
-        current_dir = Path(__file__).parent.absolute()
-        main_py_path = current_dir / "deepfake_web" / "main.py"
-        
-        with open(main_py_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        # DEFAULT_BASE_URL 라인 찾아서 교체
-        lines = content.split("\n")
-        for i, line in enumerate(lines):
-            if line.strip().startswith("DEFAULT_BASE_URL"):
-                lines[i] = f'DEFAULT_BASE_URL = "{ngrok_url}"  # 자동 업데이트됨'
-                break
-        
-        with open(main_py_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-        
-        print(f"✅ Streamlit 기본 URL 업데이트: {ngrok_url}")
-        return True
-    except Exception as e:
-        print(f"⚠️  Streamlit URL 업데이트 실패: {e}")
-        return False
-
 def main():
     print("=" * 60)
     print("🚀 Deepfake Detection 통합 실행 스크립트")
@@ -145,16 +120,17 @@ def main():
         # ngrok URL 가져오기
         ngrok_url = get_ngrok_url()
         if ngrok_url:
-            update_streamlit_default_url(ngrok_url)
+            print(f"\n✅ 외부 접근 URL: {ngrok_url}")
         
-        # 3. Streamlit 프론트엔드 시작
+        # 3. Streamlit 프론트엔드 시작 (종구님 앱)
         print("\n[3/3] 🎨 Streamlit 프론트엔드 시작 중...")
-        streamlit_dir = current_dir / "deepfake_web"
-        streamlit_cmd = f'"{sys.executable}" -m streamlit run main.py --server.port {FRONTEND_PORT}'
+        # 종구님 모델 Streamlit 앱
+        streamlit_path = current_dir / "app" / "models_jonggu" / "deepfake_detector_webapp.py"
+        streamlit_cmd = f'"{sys.executable}" -m streamlit run {streamlit_path} --server.port {FRONTEND_PORT}'
         streamlit_process = subprocess.Popen(
             streamlit_cmd,
             shell=True,
-            cwd=str(streamlit_dir),
+            cwd=str(current_dir),
             creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
         )
         processes.append(("Streamlit", streamlit_process))
@@ -163,9 +139,10 @@ def main():
         print("\n" + "=" * 60)
         print("✨ 모든 서버 실행 완료!")
         print("=" * 60)
-        print(f"📡 백엔드 (로컬):   http://localhost:{BACKEND_PORT}")
-        print(f"📡 백엔드 (외부):   {ngrok_url or '수동 확인 필요'}")
-        print(f"🌐 프론트엔드:      http://localhost:{FRONTEND_PORT}")
+        print(f"📡 백엔드 (로컬):     http://localhost:{BACKEND_PORT}")
+        print(f"📡 백엔드 (외부):     {ngrok_url or '자동 감지 대기 중...'}")
+        print(f"🎨 프론트엔드 (종구님): http://localhost:{FRONTEND_PORT}")
+        print(f"📊 백엔드 API:        http://localhost:{BACKEND_PORT}/docs (SwaggerUI)")
         print("=" * 60)
         print("\n💡 종료하려면 Ctrl+C를 누르세요.")
         print("💡 각 서버는 별도 창에서 실행 중입니다.")

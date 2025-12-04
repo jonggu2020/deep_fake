@@ -495,7 +495,7 @@ def main():
                             )
                             if response.status_code == 200:
                                 data = response.json()
-                                st.session_state.user_id = data.get("user_id")
+                                st.session_state.user_id = data.get("id")  # "user_id"가 아니라 "id" 필드 사용
                                 st.session_state.email = login_email
                                 st.session_state.is_logged_in = True
                                 st.success(f"✅ {login_email}님 로그인 성공!")
