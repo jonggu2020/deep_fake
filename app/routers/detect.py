@@ -9,6 +9,7 @@
 
 from pathlib import Path
 from typing import Optional
+import tempfile
 
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -21,6 +22,7 @@ from app.services.youtube import download_youtube_video
 from app.services.inference import run_inference_on_video
 from app.services.firebase_logger import save_detection_log
 from app.services.landmark_extractor import create_landmark_video
+from app.services.jonggu_deepfake import detect_deepfake_from_file
 
 router = APIRouter(prefix="/detect", tags=["detect"])
 
@@ -258,3 +260,91 @@ def get_landmark_video(
         media_type="video/mp4",
         filename=f"landmark_{video_id}.mp4"
     )
+
+
+@router.post("/jonggu-model")
+async def detect_with_jonggu_model(
+    file: UploadFile = File(...),
+    user_id: Optional[int] = Form(default=None),
+    sensitivity_k: float = Form(default=2.0),
+    db: Session = Depends(get_db),
+):
+    """종구님 딥페이크 탐지 모델을 사용한 분석 엔드포인트.
+    
+    XGBoost + RNN AE + MultiModal AE 앙상블 모델 사용
+    
+    요청:
+        - multipart/form-data
+        - file: 영상 파일 (mp4, avi, mkv, mov)
+        - user_id: (선택) 사용자 ID
+        - sensitivity_k: (선택) 민감도 상수 (기본값 2.0)
+    
+    응답:
+        - fake_probability: 딥페이크 확률 (0-100%)
+        - is_fake: 딥페이크 여부
+        - analysis_range: 분석 대상 구간 (초)
+        - input_sharpness: 입력 영상 선명도
+        - sensitivity_factor: 적용된 보정 계수
+    """
+    import tempfile
+    
+    try:
+        # 1) 임시 파일에 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+        
+        # 2) 종구님 모델로 탐지
+        result = await detect_deepfake_from_file(tmp_path, sensitivity_k)
+        
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        
+        # 3) DB에 기록 저장
+        video = Video(
+            user_id=user_id,
+            source_type="upload_jonggu_model",
+            source_url=None,
+            file_path=tmp_path,
+            is_deepfake=result['is_fake'],
+            confidence=result['fake_probability'] / 100.0  # 0-1로 정규화
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+        
+        # 4) Firebase에 로그 저장
+        try:
+            log_data = {
+                "status": "completed",
+                "source_type": "jonggu_model",
+                "model_result": {
+                    "prediction": "Deepfake" if result['is_fake'] else "Real",
+                    "confidence": result['fake_probability'],
+                    "input_sharpness": result['input_sharpness'],
+                    "sensitivity_factor": result['sensitivity_factor'],
+                    "scores": result['scores']
+                },
+                "created_at": video.created_at.isoformat(),
+                "video_id": video.id,
+            }
+            save_detection_log(user_id, log_data)
+        except Exception:
+            pass
+        
+        return {
+            "video_id": video.id,
+            "fake_probability": result['fake_probability'],
+            "is_fake": result['is_fake'],
+            "analysis_range": result['analysis_range'],
+            "input_sharpness": result['input_sharpness'],
+            "sensitivity_factor": result['sensitivity_factor'],
+            "scores": result['scores']
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"분석 중 오류: {str(e)}")
+

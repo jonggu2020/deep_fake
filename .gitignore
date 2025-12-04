@@ -37,9 +37,12 @@ Thumbs.db
 *.pth
 *.pt
 *.h5
+*.dat
+*.json
 
-# Environment example (실제 .env는 추적 안 함)
-.env
+# 종구님 모델 폴더 (용량이 커서 제외)
+app/models_jonggu/models/
+app/models_jonggu/*.dat
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
