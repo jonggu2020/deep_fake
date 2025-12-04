@@ -15,6 +15,8 @@ import tempfile
 import os
 import time
 from types import SimpleNamespace
+import requests
+import json
 
 # ============================================================
 # 1. 설정 및 상수
@@ -44,6 +46,19 @@ print(f"🔍 DLIB 파일 존재: {os.path.exists(DLIB_PATH)}")
 VAD_SR = 22050
 VAD_TOP_DB = 60 
 VAD_MIN_DURATION = 2.0 
+
+# ============================================================
+# 백엔드 API 설정 및 세션 초기화
+# ============================================================
+BACKEND_API_URL = "http://localhost:8000"
+
+# Streamlit 세션 상태 초기화
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "email" not in st.session_state:
+    st.session_state.email = None
+if "is_logged_in" not in st.session_state:
+    st.session_state.is_logged_in = False
 
 # 📊 [기본 도메인 설정] (사용자 제공: 1920x1080 기준)
 DOMAIN_CONFIG = {
@@ -455,7 +470,82 @@ def main():
     고화질 모델을 사용한 비디오 진위 분석 시스템
     """)
     
+    # ============================================================
+    # 🔐 로그인 섹션 (Sidebar)
+    # ============================================================
     with st.sidebar:
+        st.header("🔐 로그인")
+        
+        if not st.session_state.is_logged_in:
+            # 탭: 로그인 / 회원가입
+            auth_tab1, auth_tab2 = st.tabs(["로그인", "회원가입"])
+            
+            with auth_tab1:
+                st.subheader("로그인")
+                login_email = st.text_input("이메일", key="login_email")
+                login_password = st.text_input("비밀번호", type="password", key="login_password")
+                
+                if st.button("로그인 🔓", key="login_btn"):
+                    if login_email and login_password:
+                        try:
+                            response = requests.post(
+                                f"{BACKEND_API_URL}/auth/login",
+                                json={"email": login_email, "password": login_password},
+                                timeout=10
+                            )
+                            if response.status_code == 200:
+                                data = response.json()
+                                st.session_state.user_id = data.get("user_id")
+                                st.session_state.email = login_email
+                                st.session_state.is_logged_in = True
+                                st.success(f"✅ {login_email}님 로그인 성공!")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ 로그인 실패: {response.json().get('detail', '확인되지 않은 사용자')}")
+                        except Exception as e:
+                            st.error(f"❌ 서버 연결 오류: {str(e)}")
+                    else:
+                        st.warning("이메일과 비밀번호를 입력해주세요")
+            
+            with auth_tab2:
+                st.subheader("회원가입")
+                signup_email = st.text_input("이메일", key="signup_email")
+                signup_password = st.text_input("비밀번호", type="password", key="signup_password")
+                signup_password_confirm = st.text_input("비밀번호 확인", type="password", key="signup_password_confirm")
+                
+                if st.button("회원가입 📝", key="signup_btn"):
+                    if signup_email and signup_password and signup_password_confirm:
+                        if signup_password != signup_password_confirm:
+                            st.error("비밀번호가 일치하지 않습니다")
+                        else:
+                            try:
+                                response = requests.post(
+                                    f"{BACKEND_API_URL}/auth/signup",
+                                    json={"email": signup_email, "password": signup_password},
+                                    timeout=10
+                                )
+                                if response.status_code == 201:
+                                    st.success("✅ 회원가입 성공! 로그인 탭에서 로그인해주세요")
+                                else:
+                                    st.error(f"❌ 회원가입 실패: {response.json().get('detail', '오류 발생')}")
+                            except Exception as e:
+                                st.error(f"❌ 서버 연결 오류: {str(e)}")
+                    else:
+                        st.warning("모든 필드를 입력해주세요")
+        
+        else:
+            # 로그인된 상태
+            st.success(f"✅ {st.session_state.email}님 로그인됨")
+            st.write(f"**User ID**: {st.session_state.user_id}")
+            
+            if st.button("로그아웃 🔒"):
+                st.session_state.user_id = None
+                st.session_state.email = None
+                st.session_state.is_logged_in = False
+                st.info("로그아웃 되었습니다")
+                st.rerun()
+        
+        st.markdown("---")
         st.header("⚙️ 설정")
         # [핵심] 민감도 조절 (기본값 2.0)
         sensitivity_k = st.slider("Sensitivity (K)", 0.1, 10.0, 2.0, 0.1, 
@@ -467,14 +557,30 @@ def main():
         
         st.markdown("""
         ### 📋 사용법
-        1. 비디오 파일 업로드
-        2. 분석 구간 선택
+        1. 비디오 파일 업로드 또는 YouTube 링크 입력
+        2. 분석 구간 선택 (파일 업로드 시)
         3. 옵션 설정
         4. 분석 시작 버튼 클릭
         """)
 
+    # ============================================================
+    # 📌 입력 모드 선택 (파일 업로드 또는 YouTube)
+    # ============================================================
+    st.markdown("---")
+    input_mode = st.radio(
+        "📥 입력 방식 선택",
+        ["파일 업로드", "YouTube 링크"],
+        horizontal=True
+    )
+
     # 1️⃣ 파일 업로더 (상단에 넓게 배치)
-    uploaded_file = st.file_uploader("📁 비디오 파일 선택", type=['mp4', 'avi', 'mkv', 'mov'], help="Limit 200MB per file")
+    uploaded_file = None
+    youtube_url = None
+    
+    if input_mode == "파일 업로드":
+        uploaded_file = st.file_uploader("📁 비디오 파일 선택", type=['mp4', 'avi', 'mkv', 'mov'], help="Limit 200MB per file")
+    else:
+        youtube_url = st.text_input("🎥 YouTube URL 입력", placeholder="https://www.youtube.com/watch?v=...")
     
     if uploaded_file:
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
@@ -483,6 +589,7 @@ def main():
         
         # 비디오 메타데이터 추출
         cap = cv2.VideoCapture(video_path)
+
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -576,6 +683,74 @@ def main():
             finally: 
                 try: os.unlink(video_path)
                 except: pass
+    
+    # ============================================================
+    # 🎥 YouTube 링크 처리
+    # ============================================================
+    elif youtube_url:
+        if not st.session_state.is_logged_in:
+            st.warning("⚠️ YouTube 분석을 위해 먼저 로그인해주세요")
+        else:
+            if st.button("🚀 YouTube 비디오 분석 시작", type="primary", use_container_width=True):
+                try:
+                    st.info("⏳ YouTube 비디오를 다운로드 중입니다...")
+                    
+                    # 백엔드 API 호출
+                    response = requests.post(
+                        f"{BACKEND_API_URL}/detect/youtube",
+                        json={
+                            "url": youtube_url,
+                            "user_id": st.session_state.user_id,
+                            "sensitivity_k": sensitivity_k
+                        },
+                        timeout=300  # 5분 타임아웃
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        
+                        st.success("✅ 분석 완료!")
+                        
+                        # 📊 Dashboard 표시
+                        st.markdown("### 📊 Analysis Dashboard")
+                        d1, d2, d3 = st.columns(3)
+                        d1.metric("Fake Probability", f"{result.get('fake_probability', 0):.2f}%")
+                        d2.metric("Is Fake", "🚨 FAKE" if result.get('is_fake') else "✅ REAL")
+                        d3.metric("Sensitivity (K)", f"{sensitivity_k}")
+                        
+                        st.divider()
+                        
+                        c1, c2 = st.columns([1, 2])
+                        with c1:
+                            if result.get('is_fake'):
+                                st.error(f"### 🚨 FAKE\n**{result.get('fake_probability', 0):.2f}%**")
+                            else:
+                                st.success(f"### ✅ REAL\n**{result.get('fake_probability', 0):.2f}%**")
+                        
+                        with c2:
+                            st.markdown("#### 📝 분석 결과")
+                            st.markdown(f"""
+                            - **Fake Probability**: {result.get('fake_probability', 0):.2f}%
+                            - **Input Sharpness**: {result.get('input_sharpness', 'N/A')}
+                            - **Video ID**: {result.get('video_id', 'N/A')}
+                            """)
+                        
+                        with st.expander("🔍 상세 점수"):
+                            scores = result.get('scores', {})
+                            st.json(scores)
+                    
+                    elif response.status_code == 400:
+                        error = response.json()
+                        st.error(f"❌ 분석 오류: {error.get('detail', '알 수 없는 오류')}")
+                    else:
+                        st.error(f"❌ 서버 오류: {response.status_code}")
+                
+                except requests.exceptions.Timeout:
+                    st.error("⏱️ 요청 시간이 초과되었습니다. 나중에 다시 시도해주세요")
+                except requests.exceptions.ConnectionError:
+                    st.error("❌ 서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요")
+                except Exception as e:
+                    st.error(f"❌ 오류 발생: {str(e)}")
 
 if __name__ == "__main__":
     main()
