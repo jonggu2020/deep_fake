@@ -3,9 +3,9 @@
 종구님 딥페이크 탐지 Streamlit 앱 + FastAPI 백엔드 + ngrok 통합 실행 스크립트
 
 실행 구성:
-- uvicorn 백엔드 서버 (8000)
-- ngrok 터널링 (백엔드 외부 공개)
-- Streamlit 프론트엔드 - 종구님 앱 (8502)
+- FastAPI 백엔드 서버 (8000)
+- Streamlit 프론트엔드 (8502)
+- ngrok 터널링 (Streamlit 외부 공개)
 """
 
 import subprocess
@@ -18,7 +18,7 @@ from pathlib import Path
 # ngrok 실행 파일 경로
 NGROK_PATH = r"C:\ngrok\ngrok.exe"
 BACKEND_PORT = 8000
-FRONTEND_PORT = 8502  # 종구님 앱
+FRONTEND_PORT = 8502
 
 def cleanup_ports():
     """사용 중인 포트 자동 정리"""
@@ -26,7 +26,7 @@ def cleanup_ports():
         return
     
     ports = [BACKEND_PORT, FRONTEND_PORT, 4040]
-    print("🔧 포트 정리 중...")
+    print("[INFO] 포트 정리 중...")
     
     for port in ports:
         try:
@@ -49,7 +49,7 @@ def cleanup_ports():
         except:
             pass
     
-    print("✅ 포트 정리 완료\n")
+    print("[OK] 포트 정리 완료\n")
 
 def get_ngrok_url(max_retries=10, delay=2):
     """ngrok API로 현재 터널 URL 가져오기"""
@@ -61,21 +61,21 @@ def get_ngrok_url(max_retries=10, delay=2):
                 for tunnel in tunnels:
                     if tunnel.get("proto") == "https":
                         url = tunnel.get("public_url")
-                        print(f"✅ ngrok URL 감지: {url}")
+                        print(f"[OK] ngrok URL 감지: {url}")
                         return url
         except Exception:
             pass
         
         if i < max_retries - 1:
-            print(f"⏳ ngrok URL 대기 중... ({i+1}/{max_retries})")
+            print(f"[WAIT] ngrok URL 대기 중... ({i+1}/{max_retries})")
             time.sleep(delay)
     
-    print("⚠️  ngrok URL을 자동으로 가져올 수 없습니다.")
+    print("[WARNING] ngrok URL을 자동으로 가져올 수 없습니다.")
     return None
 
 def main():
     print("=" * 60)
-    print("🚀 Deepfake Detection 통합 실행 스크립트")
+    print("Deepfake Detection 통합 실행 스크립트")
     print("=" * 60)
     
     # 포트 자동 정리
@@ -85,8 +85,8 @@ def main():
     current_dir = Path(__file__).parent.absolute()
     
     try:
-        # 1. uvicorn 백엔드 시작
-        print("\n[1/3] 🔧 FastAPI 백엔드 시작 중...")
+        # 1. FastAPI 백엔드 시작
+        print("\n[1/3] FastAPI 백엔드 시작 중...")
         backend_cmd = f'"{sys.executable}" -m uvicorn app.main:app --reload --port {BACKEND_PORT}'
         backend_process = subprocess.Popen(
             backend_cmd,
@@ -95,38 +95,13 @@ def main():
             creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
         )
         processes.append(("Backend", backend_process))
-        print(f"✅ 백엔드 실행 중 (http://localhost:{BACKEND_PORT})")
-        time.sleep(3)
-        
-        # 2. ngrok 터널링 시작
-        print("\n[2/3] 🌐 ngrok 터널링 시작 중...")
-        if not Path(NGROK_PATH).exists():
-            print(f"❌ ngrok 파일을 찾을 수 없습니다: {NGROK_PATH}")
-            print(f"   현재 설정: {NGROK_PATH}")
-            print("   ngrok 다운로드: https://ngrok.com/download")
-            print("   start.py 파일 상단의 NGROK_PATH를 수정하세요.")
-            raise FileNotFoundError(NGROK_PATH)
-        
-        ngrok_cmd = f'"{NGROK_PATH}" http {BACKEND_PORT}'
-        ngrok_process = subprocess.Popen(
-            ngrok_cmd,
-            shell=True,
-            creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
-        )
-        processes.append(("ngrok", ngrok_process))
-        print("✅ ngrok 실행 중 (별도 창에서 확인 가능)")
+        print(f"[OK] 백엔드 실행 중 (http://localhost:{BACKEND_PORT})")
         time.sleep(5)
         
-        # ngrok URL 가져오기
-        ngrok_url = get_ngrok_url()
-        if ngrok_url:
-            print(f"\n✅ 외부 접근 URL: {ngrok_url}")
-        
-        # 3. Streamlit 프론트엔드 시작 (종구님 앱)
-        print("\n[3/3] 🎨 Streamlit 프론트엔드 시작 중...")
-        # 종구님 모델 Streamlit 앱
+        # 2. Streamlit 프론트엔드 시작
+        print("\n[2/3] Streamlit 프론트엔드 시작 중...")
         streamlit_path = current_dir / "app" / "models_jonggu" / "deepfake_detector_webapp.py"
-        streamlit_cmd = f'"{sys.executable}" -m streamlit run {streamlit_path} --server.port {FRONTEND_PORT}'
+        streamlit_cmd = f'"{sys.executable}" -m streamlit run {streamlit_path} --server.port {FRONTEND_PORT} --server.headless true'
         streamlit_process = subprocess.Popen(
             streamlit_cmd,
             shell=True,
@@ -134,45 +109,72 @@ def main():
             creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
         )
         processes.append(("Streamlit", streamlit_process))
-        print(f"✅ 프론트엔드 실행 중 (http://localhost:{FRONTEND_PORT})")
+        print(f"[OK] 프론트엔드 실행 중 (http://localhost:{FRONTEND_PORT})")
+        time.sleep(8)
+        
+        # 3. ngrok 터널링 시작 (Streamlit 포트로 연결)
+        print("\n[3/3] ngrok 터널링 시작 중...")
+        if not Path(NGROK_PATH).exists():
+            print(f"[ERROR] ngrok 파일을 찾을 수 없습니다: {NGROK_PATH}")
+            print(f"        ngrok 다운로드: https://ngrok.com/download")
+            print(f"        start.py 파일 상단의 NGROK_PATH를 수정하세요.")
+            raise FileNotFoundError(NGROK_PATH)
+        
+        ngrok_cmd = f'"{NGROK_PATH}" http {FRONTEND_PORT}'
+        ngrok_process = subprocess.Popen(
+            ngrok_cmd,
+            shell=True,
+            creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
+        )
+        processes.append(("ngrok", ngrok_process))
+        print("[OK] ngrok 실행 중 (별도 창에서 확인 가능)")
+        time.sleep(8)
+        
+        # ngrok URL 가져오기
+        ngrok_url = get_ngrok_url()
+        if ngrok_url:
+            print(f"\n[OK] 외부 접근 URL: {ngrok_url}")
         
         print("\n" + "=" * 60)
-        print("✨ 모든 서버 실행 완료!")
+        print("[SUCCESS] 모든 서버 실행 완료!")
         print("=" * 60)
-        print(f"📡 백엔드 (로컬):     http://localhost:{BACKEND_PORT}")
-        print(f"📡 백엔드 (외부):     {ngrok_url or '자동 감지 대기 중...'}")
-        print(f"🎨 프론트엔드 (종구님): http://localhost:{FRONTEND_PORT}")
-        print(f"📊 백엔드 API:        http://localhost:{BACKEND_PORT}/docs (SwaggerUI)")
+        print(f"FastAPI 백엔드:    http://localhost:{BACKEND_PORT}")
+        print(f"Streamlit 앱:      http://localhost:{FRONTEND_PORT}")
+        print(f"외부 공개 URL:     {ngrok_url or '자동 감지 대기 중...'}")
+        print(f"API 문서 (Swagger): http://localhost:{BACKEND_PORT}/docs")
         print("=" * 60)
-        print("\n💡 종료하려면 Ctrl+C를 누르세요.")
-        print("💡 각 서버는 별도 창에서 실행 중입니다.")
+        print("\n[INFO] 종료하려면 Ctrl+C를 누르세요.")
+        print("[INFO] 각 서버는 별도 창에서 실행 중입니다.")
+        print("\n로그인 정보:")
+        print("  Email: 4comma3@naver.com")
+        print("  Password: test123")
         
         # 프로세스 모니터링
         while True:
             time.sleep(1)
             for name, proc in processes:
                 if proc.poll() is not None:
-                    print(f"⚠️  {name} 프로세스가 종료되었습니다.")
+                    print(f"[WARNING] {name} 프로세스가 종료되었습니다.")
     
     except KeyboardInterrupt:
-        print("\n\n🛑 서버 종료 중...")
+        print("\n\n[INFO] 서버 종료 중...")
         for name, proc in processes:
             try:
                 proc.terminate()
                 proc.wait(timeout=5)
-                print(f"✅ {name} 종료됨")
+                print(f"[OK] {name} 종료됨")
             except Exception:
                 try:
                     proc.kill()
-                    print(f"⚠️  {name} 강제 종료됨")
+                    print(f"[WARNING] {name} 강제 종료됨")
                 except Exception:
                     pass
-        print("👋 모든 서버가 종료되었습니다.")
+        print("[OK] 모든 서버가 종료되었습니다.")
         sys.exit(0)
     
     except Exception as e:
-        print(f"\n❌ 오류 발생: {e}")
-        print(f"   오류 타입: {type(e).__name__}")
+        print(f"\n[ERROR] 오류 발생: {e}")
+        print(f"        오류 타입: {type(e).__name__}")
         for name, proc in processes:
             try:
                 proc.terminate()

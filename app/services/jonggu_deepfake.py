@@ -27,7 +27,18 @@ from typing import Optional, Tuple, Dict, Any
 PROJECT_ROOT = Path(__file__).parent.parent
 MODEL_DIR = PROJECT_ROOT / "models_jonggu"
 
-DLIB_PATH = str(MODEL_DIR / "shape_predictor_68_face_landmarks.dat")
+# dlib 파일 경로 (한글 경로 문제 회피를 위해 영문 경로 사용)
+DLIB_PATH_ORIGINAL = str(MODEL_DIR / "shape_predictor_68_face_landmarks.dat")
+DLIB_PATH_TEMP = r"C:\temp_dlib\shape_predictor_68_face_landmarks.dat"
+
+# 영문 경로에 파일이 있으면 사용, 없으면 원본 경로 사용
+if os.path.exists(DLIB_PATH_TEMP):
+    DLIB_PATH = DLIB_PATH_TEMP
+    print(f"[OK] [jonggu_deepfake] 영문 경로의 dlib 파일 사용: {DLIB_PATH}")
+else:
+    DLIB_PATH = DLIB_PATH_ORIGINAL
+    print(f"[WARNING] [jonggu_deepfake] 원본 경로의 dlib 파일 사용 (한글 경로 문제 발생 가능): {DLIB_PATH}")
+
 WHISPER_SIZE = "base"
 
 VAD_SR = 22050
@@ -456,7 +467,13 @@ def calculate_result(scores: Dict[str, float], input_stats: Dict[str, float], se
     }
 
 
-async def detect_deepfake_from_file(video_file_path: str, sensitivity_k: float = 2.0, use_audio: bool = True) -> Dict[str, Any]:
+async def detect_deepfake_from_file(
+    video_file_path: str, 
+    sensitivity_k: float = 2.0, 
+    use_audio: bool = True,
+    start_time: float = 0.0,
+    end_time: float = 15.0
+) -> Dict[str, Any]:
     """
     비디오 파일에서 딥페이크 탐지
     
@@ -464,6 +481,8 @@ async def detect_deepfake_from_file(video_file_path: str, sensitivity_k: float =
         video_file_path: 비디오 파일 경로
         sensitivity_k: 민감도 상수 (기본값 2.0)
         use_audio: 음성 분석 포함 여부
+        start_time: 분석 시작 시간 (초)
+        end_time: 분석 종료 시간 (초)
     
     Returns:
         탐지 결과 딕셔너리
@@ -482,14 +501,9 @@ async def detect_deepfake_from_file(video_file_path: str, sensitivity_k: float =
         if duration < 3.0:
             return {"error": "비디오가 너무 짧습니다 (최소 3초)"}
 
-        # 2. 음성 구간 감지
-        search_end = min(duration, 15.0)
-        vad_result, vad_msg = detect_speech_segment(video_file_path, 0.0, search_end)
-
-        if vad_result is None:
-            return {"error": vad_msg}
-
-        start_time, end_time = vad_result
+        # 2. 사용자 지정 범위 사용 (음성 구간 감지 건너뛰기)
+        # 기본값은 0~15초이지만 사용자가 지정한 범위 사용
+        vad_result = (start_time, min(end_time, duration))
 
         # 3. 모델 로드
         models = load_models()

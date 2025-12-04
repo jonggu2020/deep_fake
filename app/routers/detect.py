@@ -39,6 +39,8 @@ class YouTubeDetectRequest(BaseModel):
     url: str
     user_id: Optional[int] = None
     sensitivity_k: Optional[float] = 2.0
+    start_time: Optional[float] = 0.0
+    end_time: Optional[float] = 15.0
 
 
 @router.post("/upload", response_model=DetectResult)
@@ -101,8 +103,8 @@ async def detect_from_upload(
     # 4) 딥페이크 탐지 수행 (현재는 랜덤)
     is_deepfake, confidence = run_inference_on_video(str(file_path))
 
-    # 5) 결과를 DB에 저장
-    video.is_deepfake = is_deepfake
+    # 5) 결과를 DB에 저장 (Boolean을 Integer로 변환)
+    video.is_deepfake = 1 if is_deepfake else 0
     video.confidence = confidence
     db.commit()
     db.refresh(video)
@@ -183,26 +185,54 @@ def detect_from_youtube(
         result = asyncio.run(detect_deepfake_from_file(
             file_path, 
             sensitivity_k=request.sensitivity_k,
-            use_audio=True
+            use_audio=True,
+            start_time=request.start_time,
+            end_time=request.end_time
         ))
         
-        # DB에 결과 저장
-        video.is_deepfake = result.get("is_fake", False)
-        video.confidence = result.get("fake_probability", 0.0) / 100.0
+        # 에러 체크
+        if "error" in result:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=f"Analysis failed: {result['error']}")
+        
+        # 랜드마크 추출 영상 생성 (백그라운드)
+        landmark_result = None
+        try:
+            print(f"🎯 YouTube 영상 랜드마크 추출 시작: {file_path}")
+            landmark_result = create_landmark_video(
+                input_path=file_path,
+                output_dir="uploads/landmarks",
+                max_processing_time=3.0
+            )
+            
+            if landmark_result["success"]:
+                video.landmark_video_path = landmark_result["output_path"]
+                print(f"✅ YouTube 랜드마크 영상 생성 완료: {landmark_result['output_path']}")
+            else:
+                print(f"⚠️  YouTube 랜드마크 추출 실패: {landmark_result.get('error', 'Unknown error')}")
+        except Exception as e:
+            print(f"❌ YouTube 랜드마크 추출 중 오류: {str(e)}")
+            landmark_result = {"success": False, "error": str(e)}
+        
+        # DB에 결과 저장 (Boolean을 Integer로 변환, NumPy 타입 처리)
+        video.is_deepfake = int(result.get("is_fake", False))
+        video.confidence = float(result.get("fake_probability", 0.0) / 100.0)
         db.commit()
         
-        # 응답 반환
+        # 응답 반환 (NumPy 타입을 Python 타입으로 변환)
         return {
             "video_id": video.id,
-            "fake_probability": result.get("fake_probability", 0.0),
-            "is_fake": result.get("is_fake", False),
-            "input_sharpness": result.get("input_sharpness", 0.0),
-            "scores": result.get("scores", {}),
+            "fake_probability": float(result.get("fake_probability", 0.0)),
+            "is_fake": bool(result.get("is_fake", False)),
+            "input_sharpness": float(result.get("input_sharpness", 0.0)),
+            "scores": {k: float(v) for k, v in result.get("scores", {}).items()},
+            "landmark_video_path": video.landmark_video_path,
             "message": "YouTube video analysis completed"
         }
     
     except Exception as e:
         db.rollback()
+        print(f"❌ YouTube 분석 오류: {str(e)}", flush=True)
         raise HTTPException(status_code=400, detail=f"Analysis failed: {str(e)}")
 
 

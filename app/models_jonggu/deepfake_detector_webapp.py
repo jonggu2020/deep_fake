@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import cv2
 import numpy as np
@@ -31,17 +32,17 @@ DLIB_PATH_TEMP = r"C:\temp_dlib\shape_predictor_68_face_landmarks.dat"
 # 영문 경로에 파일이 있으면 사용, 없으면 원본 경로 사용
 if os.path.exists(DLIB_PATH_TEMP):
     DLIB_PATH = DLIB_PATH_TEMP
-    print(f"✅ 영문 경로의 dlib 파일 사용: {DLIB_PATH}")
+    print(f"[OK] 영문 경로의 dlib 파일 사용: {DLIB_PATH}")
 else:
     DLIB_PATH = DLIB_PATH_ORIGINAL
-    print(f"⚠️  원본 경로의 dlib 파일 사용 (한글 경로 문제 발생 가능): {DLIB_PATH}")
+    print(f"[WARNING] 원본 경로의 dlib 파일 사용: {DLIB_PATH}")
 
 WHISPER_SIZE = "base"
 
 # 디버깅: 경로 출력
-print(f"🔍 BASE_DIR: {BASE_DIR}")
-print(f"🔍 DLIB_PATH: {DLIB_PATH}")
-print(f"🔍 DLIB 파일 존재: {os.path.exists(DLIB_PATH)}")
+print(f"[DEBUG] BASE_DIR: {BASE_DIR}")
+print(f"[DEBUG] DLIB_PATH: {DLIB_PATH}")
+print(f"[DEBUG] DLIB 파일 존재: {os.path.exists(DLIB_PATH)}")
 
 VAD_SR = 22050
 VAD_TOP_DB = 60 
@@ -581,6 +582,14 @@ def main():
         uploaded_file = st.file_uploader("📁 비디오 파일 선택", type=['mp4', 'avi', 'mkv', 'mov'], help="Limit 200MB per file")
     else:
         youtube_url = st.text_input("🎥 YouTube URL 입력", placeholder="https://www.youtube.com/watch?v=...")
+        
+        # YouTube 탐색 범위 설정
+        st.markdown("#### ⏱️ 탐색 범위 설정")
+        yt_col1, yt_col2 = st.columns(2)
+        with yt_col1:
+            yt_start_time = st.number_input("시작 시간 (초)", min_value=0.0, max_value=600.0, value=0.0, step=1.0, key="yt_start")
+        with yt_col2:
+            yt_end_time = st.number_input("종료 시간 (초)", min_value=0.0, max_value=600.0, value=15.0, step=1.0, key="yt_end")
     
     if uploaded_file:
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
@@ -701,7 +710,9 @@ def main():
                         json={
                             "url": youtube_url,
                             "user_id": st.session_state.user_id,
-                            "sensitivity_k": sensitivity_k
+                            "sensitivity_k": sensitivity_k,
+                            "start_time": yt_start_time,
+                            "end_time": yt_end_time
                         },
                         timeout=300  # 5분 타임아웃
                     )
@@ -734,6 +745,16 @@ def main():
                             - **Input Sharpness**: {result.get('input_sharpness', 'N/A')}
                             - **Video ID**: {result.get('video_id', 'N/A')}
                             """)
+                        
+                        # 랜드마크 영상 표시
+                        if result.get('landmark_video_path'):
+                            st.markdown("---")
+                            st.markdown("### 🎬 얼굴 특징 추출 영상 (Landmark Video)")
+                            try:
+                                with open(result['landmark_video_path'], 'rb') as f:
+                                    st.video(f.read())
+                            except Exception as e:
+                                st.warning(f"랜드마크 영상 재생 불가: {str(e)}")
                         
                         with st.expander("🔍 상세 점수"):
                             scores = result.get('scores', {})
