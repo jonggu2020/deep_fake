@@ -1,0 +1,8 @@
+id_org,name,success,XGBoost,RNN,Multi
+1,Deepfake_youtube (1).mp4,F,0.0019,38.2589,81.2947
+2,Deepfake_youtube (2).mp4,T,0.994,1.6382,5.3744
+3,Deepfake_youtube (3).mp4,T,0.9315,9.2355,35.3002
+4,Deepfake_youtube (4).mp4,T,0.0806,0.0823,0.463
+5,Deepfake_youtube (5).mp4,T,0.6098,18.1909,59.1229
+6,Deepfake_youtube (6).mp4,T,0.8843,14.1636,50.5419
+7,Deepfake_youtube (7).mp4,Skip,0.0,0.0,0.0
