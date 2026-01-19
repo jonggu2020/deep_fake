@@ -1,0 +1,77 @@
+"""FastAPI 애플리케이션 엔트리 포인트.
+
+- uvicorn app.main:app --reload 명령으로 실행된다.
+- 여기서 라우터 등록, CORS 설정, DB 테이블 생성 등을 한 번에 수행한다.
+"""
+
+# 1. 환경변수 먼저 로드 (모든 import보다 먼저)
+import sys
+from dotenv import load_dotenv
+from pathlib import Path
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+print(f"✅ [main.py] .env 로드: {env_path}", file=sys.stderr, flush=True)
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+# 2. Firebase 먼저 초기화 (database.py보다 먼저 - auth.py에서 사용)
+from app.services import firebase_logger
+
+# Firebase 명시적 초기화 호출
+firebase_logger._initialize_if_possible()
+
+# Firebase 초기화 확인
+try:
+    import firebase_admin
+    if firebase_admin._apps:
+        print(f"✅ [main.py] Firebase 초기화 완료!", file=sys.stderr, flush=True)
+    else:
+        print(f"⚠️  [main.py] Firebase 초기화 실패 - auth.py에서 사용자 저장 안됨", file=sys.stderr, flush=True)
+except:
+    print(f"⚠️  [main.py] Firebase 초기화 확인 실패", file=sys.stderr, flush=True)
+
+# 3. Database 연결 및 테이블 생성
+from app.database import Base, engine
+from app.routers import auth, detect
+
+# 앱 실행 시점에 한 번 DB 테이블들을 생성한다.
+# (이미 테이블이 있으면 그대로 사용, 없으면 새로 만든다.)
+Base.metadata.create_all(bind=engine)
+
+# FastAPI 앱 인스턴스 생성
+app = FastAPI(title="Deepfake Detection Backend")
+
+
+# CORS 설정
+# - 프론트엔드(React, Vue 등)에서 이 백엔드 API를 호출할 수 있도록 허용하는 설정
+# - 개발 단계에서는 allow_origins=["*"] 로 두고, 운영 단계에서 도메인을 제한하는 것이 좋다.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 라우터 등록
+app.include_router(auth.router)
+app.include_router(detect.router)
+
+# Static files serving (업로드된 파일 및 랜드마크 영상 제공)
+# uploads 디렉토리를 /uploads 경로로 제공
+from pathlib import Path
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
+@app.get("/")
+def root():
+    """헬스 체크용 기본 엔드포인트.
+
+    - 서버가 잘 떠 있는지 확인할 때 사용.
+    - 브라우저에서 http://127.0.0.1:8000/ 로 접속하면 이 메시지가 보인다.
+    """
+    return {"message": "Deepfake backend is running"}

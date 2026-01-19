@@ -1,0 +1,48 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env
+
+# Database files
+*.db
+*.sqlite3
+
+# Firebase / Secrets
+secrets/
+*.json
+
+
+# Uploads or user-provided files (영상 저장 폴더)
+uploads/
+output/
+data/
+low_put/
+high_put/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE 내부 파일
+.vscode/
+.idea/
+
+# Model files (나중에 모델 weight 들어올 가능성 있음)
+*.pth
+*.pt
+*.h5
+*.dat
+*.json
+
+# 종구님 모델 폴더 (용량이 커서 제외)
+app/models_jonggu/models/
+app/models_jonggu/*.dat
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
